@@ -1,12 +1,31 @@
 #include "kotte/application.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <format>
 #include <raymath.h>
 #include <string>
 #include <utility>
+
+namespace
+{
+    // The gameplay room, one character per floor tile inside the outer walls.
+    // '.' is floor, 'c' is a crate and 'e' is an enemy. The player always
+    // starts at column 2, row 2, which is the second character of the second row.
+    constexpr std::array<std::string_view, 9> gameplay_layout{
+        ".............",
+        "...c.c.c.c...",
+        ".c.........c.",
+        "...c..e..c...",
+        ".c....c....c.",
+        "...c.....c.e.",
+        ".c..e......c.",
+        "...c.c.c.c...",
+        "............."
+    };
+}
 
 namespace kotte
 {    
@@ -15,15 +34,17 @@ namespace kotte
         int height,
         std::string_view title,
         std::uint64_t seed,
+        WorldLayout layout,
         int target_fps)
         : window_{width, height, title, target_fps}
         , camera_{window_.size()}
         , random_{seed}
-        , map_{make_room(200, 120, random_)}
+        , map_{make_room(map_width(layout), map_height(layout), random_)}
         , spatial_grid_{{
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
-        , seed_{seed}{
+        , seed_{seed}
+        , layout_{layout}{
         populate_entities();
         initialize_enemies();
     }
@@ -553,10 +574,36 @@ namespace kotte
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
 
-        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
-        player_handle_ = entities_.create(player_entity);
-        spatial_grid_.insert(player_handle_, entity_world_bounds(player_entity));
+        player_handle_ = spawn_entity(EntityKind::player, tile_centre(2, 2));
 
+        if(layout_ == WorldLayout::gameplay){
+            populate_gameplay_entities();
+        } else{
+            populate_stress_entities();
+        }
+    }
+
+    void Application::populate_gameplay_entities(){
+        static_assert(gameplay_layout.size() == gameplay_map_height_ - 2);
+
+        for(int y = 1; y < map_.height() - 1; ++y){
+            const std::string_view row = gameplay_layout[static_cast<std::size_t>(y - 1)];
+            assert(row.size() == static_cast<std::size_t>(map_.width() - 2));
+
+            for(int x = 1; x < map_.width() - 1; ++x){
+                const char cell = row[static_cast<std::size_t>(x - 1)];
+                if(cell == 'c'){
+                    (void) spawn_entity(EntityKind::crate, tile_centre(x, y));
+                } else if(cell == 'e'){
+                    (void) spawn_entity(EntityKind::enemy, tile_centre(x, y));
+                }
+            }
+        }
+    }
+
+    void Application::populate_stress_entities(){
+        // This is the unchanged Week 6 generation. Keeping the same order of
+        // random draws keeps the same world for the reference seed.
         for(int y = 1; y < map_.height() - 1; ++y){
             for(int x = 1; x < map_.width() - 1; ++x){
                 if((x == 2 && y == 2) || map_.at(x, y).type != TileType::floor || !random_.coin_flip(0.25f)){
@@ -570,19 +617,22 @@ namespace kotte
                     continue;
                 }
                 const EntityKind kind = kind_roll < 15 ? EntityKind::crate : EntityKind::enemy;
-                const Vector2 world_position{
-                    static_cast<float>(x * tile_size_ + tile_size_ / 2),
-                    static_cast<float>(y * tile_size_ + tile_size_ / 2)
-                };
-                const Entity new_entity{kind, world_position};
-                const EntityHandle handle = entities_.create(new_entity);
-                spatial_grid_.insert(handle, entity_world_bounds(new_entity));
-
-                if(kind == EntityKind::enemy){
-                    enemy_handles_.push_back(handle);
-                }
+                (void) spawn_entity(kind, tile_centre(x, y));
             }
         }
+    }
+
+    EntityHandle Application::spawn_entity(EntityKind kind, Vector2 world_position){
+        // Used while building the world, before the first frame. During play,
+        // entities are created only in the structural mutation phase.
+        const Entity new_entity{kind, world_position};
+        const EntityHandle handle = entities_.create(new_entity);
+        spatial_grid_.insert(handle, entity_world_bounds(new_entity));
+
+        if(kind == EntityKind::enemy){
+            enemy_handles_.push_back(handle);
+        }
+        return handle;
     }
 
     void Application::initialize_enemies(){
@@ -759,6 +809,14 @@ namespace kotte
             static_cast<float>(column) * tile_extent + tile_extent / 2.0f,
             static_cast<float>(row) * tile_extent + tile_extent / 2.0f
         };
+    }
+
+    int Application::map_width(WorldLayout layout) noexcept{
+        return layout == WorldLayout::gameplay ? gameplay_map_width_ : stress_map_width_;
+    }
+
+    int Application::map_height(WorldLayout layout) noexcept{
+        return layout == WorldLayout::gameplay ? gameplay_map_height_ : stress_map_height_;
     }
 
     Color Application::entity_color(EntityKind kind) noexcept{
