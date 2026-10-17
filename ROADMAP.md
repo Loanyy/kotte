@@ -34,4 +34,6 @@ Only checks that were actually run are marked done.
 | Gameplay map: 15x11, 23 entities, 3 enemies | Opened | Opened as expected |
 | `--stress`: 200x120, 4570 entities, 294 enemies | Same as baseline | Same numbers |
 | `EntityStore::clear` tests | Passed | Release rebuild, no warnings, tests passed |
-| Merged `final-assignment` | Tests passed, game opens | Pending |
+| Merged `final-assignment` | Tests passed, game opens | Rebuild 2 succeeded, no warnings; tests passed; both layouts correct |
+
+Day 1 done.
