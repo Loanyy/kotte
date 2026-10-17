@@ -29,6 +29,9 @@ Only checks that were actually run are marked done.
 
 | Item | Linux | Windows (Visual Studio) |
 | --- | --- | --- |
-| Baseline `kotte.tests` at `19e2866` | Passed (GCC 14) | Pending |
-| Baseline Release /W4 build | Compiles (syntax only, no link) | Pending |
-| Baseline play check | Not possible | Pending |
+| Baseline `19e2866`: Release x64 build, `kotte.tests` | Tests passed | Build and tests passed |
+| Baseline play check | Not possible | Bombs destroy crates, Q quits |
+| Gameplay map: 15x11, 23 entities, 3 enemies | Opened | Opened as expected |
+| `--stress`: 200x120, 4570 entities, 294 enemies | Same as baseline | Same numbers |
+| `EntityStore::clear` tests | Passed | Release rebuild, no warnings, tests passed |
+| Merged `final-assignment` | Tests passed, game opens | Pending |
