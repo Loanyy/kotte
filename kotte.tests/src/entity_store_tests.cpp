@@ -98,6 +98,47 @@ namespace
         require(!store.contains(retained_owner), "A relationship must validate its handle before use.");
         require(replacement.slot == player_handle.slot, "The test must exercise owner-slot reuse.");
     }
+
+    void clear_invalidates_every_old_handle(){
+        kotte::EntityStore store;
+
+        const kotte::EntityHandle player_handle = store.create({kotte::EntityKind::player});
+        const kotte::EntityHandle crate_handle = store.create({kotte::EntityKind::crate});
+        const kotte::EntityHandle enemy_handle = store.create({kotte::EntityKind::enemy});
+        require(store.destroy(crate_handle), "Setup: one slot is already free before the clear.");
+
+        store.clear();
+        require(store.live_count() == 0, "Clearing must leave no live entities.");
+        require(store.slot_count() == 3, "Clearing must keep the slots for reuse.");
+        require(!store.contains(player_handle), "Clearing must invalidate the player handle.");
+        require(!store.contains(enemy_handle), "Clearing must invalidate the enemy handle.");
+        require(!store.destroy(enemy_handle), "Destroying an old handle after clearing must be harmless.");
+
+        const kotte::EntityHandle first = store.create({kotte::EntityKind::player});
+        const kotte::EntityHandle second = store.create({kotte::EntityKind::crate});
+        const kotte::EntityHandle third = store.create({kotte::EntityKind::enemy});
+        require(store.slot_count() == 3, "New entities must reuse the cleared slots.");
+        require(store.live_count() == 3, "The store must count the new entities.");
+
+        for(const kotte::EntityHandle old_handle : {player_handle, crate_handle, enemy_handle}){
+            require(!store.contains(old_handle), "An old handle must not resolve to a new entity.");
+            require(old_handle != first && old_handle != second && old_handle != third,
+                "A new handle must never repeat an old one.");
+        }
+    }
+
+    void a_new_store_can_repeat_old_handles(){
+        // This is why restart should clear the store instead of replacing it:
+        // a fresh store starts every slot at the first generation again.
+        kotte::EntityStore old_store;
+        const kotte::EntityHandle old_player = old_store.create({kotte::EntityKind::player});
+
+        kotte::EntityStore new_store;
+        const kotte::EntityHandle new_enemy = new_store.create({kotte::EntityKind::enemy});
+
+        require(old_player == new_enemy, "A fresh store issues the same first handle again.");
+        require(new_store.contains(old_player), "So an old handle would resolve to a new entity.");
+    }
 }
 
 int main(){
@@ -105,6 +146,8 @@ int main(){
         stale_handle_cannot_access_a_reused_slot();
         handles_survive_storage_reallocation();
         relationships_do_not_keep_stale_owners_alive();
+        clear_invalidates_every_old_handle();
+        a_new_store_can_repeat_old_handles();
         std::println("EntityStore tests passed.");
         return 0;
     } catch(const std::exception& error){
