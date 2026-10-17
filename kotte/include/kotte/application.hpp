@@ -31,6 +31,13 @@ namespace kotte
         std::size_t enemy_turns = 0;
     };
 
+    // Gameplay is a small, completable room. Stress is the large Week 6 world
+    // used to show that culling and spatial queries still scale.
+    enum class WorldLayout : std::uint8_t {
+        gameplay,
+        stress
+    };
+
     class Application final{
     public:
         Application(
@@ -38,6 +45,7 @@ namespace kotte
             int window_height,
             std::string_view title,
             std::uint64_t seed,
+            WorldLayout layout,
             int target_fps = 0);
 
         Application(const Application&) = delete;
@@ -101,6 +109,9 @@ namespace kotte
         void update_camera(float delta_time) noexcept;
         void render();
         void populate_entities();
+        void populate_gameplay_entities();
+        void populate_stress_entities();
+        EntityHandle spawn_entity(EntityKind kind, Vector2 world_position);
         void initialize_enemies();
         [[nodiscard]] Entity& entity(EntityHandle handle) noexcept;
         [[nodiscard]] const Entity& entity(EntityHandle handle) const noexcept;
@@ -117,10 +128,16 @@ namespace kotte
         [[nodiscard]] bool owner_has_active_bomb(EntityHandle owner) const noexcept;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
+        [[nodiscard]] static int map_width(WorldLayout layout) noexcept;
+        [[nodiscard]] static int map_height(WorldLayout layout) noexcept;
         [[nodiscard]] static Color entity_color(EntityKind kind) noexcept;
         [[nodiscard]] static float entity_roundness(EntityKind kind) noexcept;
         static constexpr int tile_size_ = 40;
         static constexpr int spatial_cell_tiles_ = 8;
+        static constexpr int gameplay_map_width_ = 15;
+        static constexpr int gameplay_map_height_ = 11;
+        static constexpr int stress_map_width_ = 200;
+        static constexpr int stress_map_height_ = 120;
         static constexpr float spatial_cell_size_ = tile_size_ * spatial_cell_tiles_;
         static constexpr float player_speed_ = 240.0f;
         static constexpr float enemy_speed_ = 80.0f;
@@ -156,6 +173,7 @@ namespace kotte
         std::vector<BlastEffect> blast_effects_;
         CollisionDiagnostics collision_diagnostics_;
         std::uint64_t seed_;
+        WorldLayout layout_;
         EntityHandle player_handle_;
         bool exit_requested_ = false;
     };
