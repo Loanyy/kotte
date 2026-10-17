@@ -60,11 +60,9 @@ namespace kotte
         for(std::size_t index = 0; index < slots_.size(); ++index){
             Slot& slot = slots_[index];
             if(!slot.entity.has_value()){
-                continue; // Already free, and already on the free list.
+                continue;
             }
 
-            // Same steps as destroy(): the generation moves on, so any handle
-            // still pointing at this slot is now stale.
             free_slots_.push_back(static_cast<std::uint32_t>(index));
             slot.entity.reset();
             slot.generation = next_generation(slot.generation);

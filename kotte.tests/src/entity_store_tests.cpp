@@ -128,8 +128,7 @@ namespace
     }
 
     void a_new_store_can_repeat_old_handles(){
-        // This is why restart should clear the store instead of replacing it:
-        // a fresh store starts every slot at the first generation again.
+        // Why restart clears the store instead of replacing it.
         kotte::EntityStore old_store;
         const kotte::EntityHandle old_player = old_store.create({kotte::EntityKind::player});
 

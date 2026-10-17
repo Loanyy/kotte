@@ -8,8 +8,6 @@
 
 namespace
 {
-    // The small gameplay room is the default. Start the program with
-    // "--stress" to get the large Week 6 world instead.
     kotte::WorldLayout layout_from_arguments(int argc, char** argv){
         const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
         for(const char* argument : arguments){

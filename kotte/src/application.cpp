@@ -11,9 +11,7 @@
 
 namespace
 {
-    // The gameplay room, one character per floor tile inside the outer walls.
-    // '.' is floor, 'c' is a crate and 'e' is an enemy. The player always
-    // starts at column 2, row 2, which is the second character of the second row.
+    // '.' floor, 'c' crate, 'e' enemy. The player starts at tile (2, 2).
     constexpr std::array<std::string_view, 9> gameplay_layout{
         ".............",
         "...c.c.c.c...",
@@ -602,8 +600,7 @@ namespace kotte
     }
 
     void Application::populate_stress_entities(){
-        // This is the unchanged Week 6 generation. Keeping the same order of
-        // random draws keeps the same world for the reference seed.
+        // Same random draws as Week 6, so the seed gives the same world.
         for(int y = 1; y < map_.height() - 1; ++y){
             for(int x = 1; x < map_.width() - 1; ++x){
                 if((x == 2 && y == 2) || map_.at(x, y).type != TileType::floor || !random_.coin_flip(0.25f)){
@@ -623,8 +620,6 @@ namespace kotte
     }
 
     EntityHandle Application::spawn_entity(EntityKind kind, Vector2 world_position){
-        // Used while building the world, before the first frame. During play,
-        // entities are created only in the structural mutation phase.
         const Entity new_entity{kind, world_position};
         const EntityHandle handle = entities_.create(new_entity);
         spatial_grid_.insert(handle, entity_world_bounds(new_entity));

@@ -31,8 +31,6 @@ namespace kotte
         std::size_t enemy_turns = 0;
     };
 
-    // Gameplay is a small, completable room. Stress is the large Week 6 world
-    // used to show that culling and spatial queries still scale.
     enum class WorldLayout : std::uint8_t {
         gameplay,
         stress
