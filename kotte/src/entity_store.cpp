@@ -56,6 +56,23 @@ namespace kotte
         return true;
     }
 
+    void EntityStore::clear(){
+        for(std::size_t index = 0; index < slots_.size(); ++index){
+            Slot& slot = slots_[index];
+            if(!slot.entity.has_value()){
+                continue; // Already free, and already on the free list.
+            }
+
+            // Same steps as destroy(): the generation moves on, so any handle
+            // still pointing at this slot is now stale.
+            free_slots_.push_back(static_cast<std::uint32_t>(index));
+            slot.entity.reset();
+            slot.generation = next_generation(slot.generation);
+        }
+
+        live_count_ = 0;
+    }
+
     Entity* EntityStore::try_get(EntityHandle handle) noexcept{
         if(handle.slot >= slots_.size()){
             return nullptr;

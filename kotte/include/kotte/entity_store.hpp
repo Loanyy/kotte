@@ -18,6 +18,11 @@ namespace kotte
         [[nodiscard]] EntityHandle create(Entity entity);
         [[nodiscard]] bool destroy(EntityHandle handle);
 
+        // Destroys every live entity, as if destroy() were called on each one.
+        // Every handle issued before the call stops resolving, and the slots
+        // stay in the store so later handles cannot repeat an old one.
+        void clear();
+
         // Resolved pointers are borrowed views and must not cross a structural
         // mutation. Handles remain the durable identity held by other systems.
         [[nodiscard]] Entity* try_get(EntityHandle handle) noexcept;
