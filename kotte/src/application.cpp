@@ -184,10 +184,15 @@ namespace kotte
     }
 
     void Application::evaluate_round_outcome() noexcept{
-        // Several hits in one frame still end the round only once.
-        if(round_state_ == RoundState::playing && !player_hit_facts_.empty()){
-            round_state_ = RoundState::lost;
-            lost_cause_ = player_hit_facts_.front().source;
+        // Several hits in one frame still end the round only once. Hits are
+        // checked first, so a blast that kills the last enemy and the player loses.
+        if(round_state_ == RoundState::playing){
+            if(!player_hit_facts_.empty()){
+                round_state_ = RoundState::lost;
+                lost_cause_ = player_hit_facts_.front().source;
+            } else if(enemy_handles_.empty()){
+                round_state_ = RoundState::won;
+            }
         }
         player_hit_facts_.clear();
     }
@@ -570,11 +575,17 @@ namespace kotte
             collision_diagnostics_.contacts);
         DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
 
-        if(round_state_ == RoundState::lost){
-            const char* cause = lost_cause_ == DamageSource::blast ? "blast" : "enemy";
-            diagnostics = std::format("YOU LOSE ({})", cause);
-            DrawText(diagnostics.c_str(), 10, 140, 30, RED);
+        Color status_color = RAYWHITE;
+        diagnostics = "PLAYING";
+        if(round_state_ == RoundState::won){
+            status_color = GREEN;
+            diagnostics = "YOU WIN";
+        } else if(round_state_ == RoundState::lost){
+            status_color = RED;
+            diagnostics = lost_cause_ == DamageSource::blast ? "YOU LOSE (blast)" : "YOU LOSE (enemy)";
         }
+        diagnostics += std::format(" | enemies left: {}", enemy_handles_.size());
+        DrawText(diagnostics.c_str(), 10, 140, 30, status_color);
 
         diagnostics = std::format("seed: {}", seed_);
         DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);

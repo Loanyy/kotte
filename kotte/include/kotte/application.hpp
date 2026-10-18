@@ -55,6 +55,7 @@ namespace kotte
     private:
         enum class RoundState : std::uint8_t {
             playing,
+            won,
             lost
         };
 
