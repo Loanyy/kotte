@@ -35,5 +35,6 @@ Only checks that were actually run are marked done.
 | `--stress`: 200x120, 4570 entities, 294 enemies | Same as baseline | Same numbers |
 | `EntityStore::clear` tests | Passed | Release rebuild, no warnings, tests passed |
 | Merged `final-assignment` | Tests passed, game opens | Rebuild 2 succeeded, no warnings; tests passed; both layouts correct |
+| Day 2: player damage, Won/Lost, restart | Tests passed, scripted play checks passed | Pending |
 
-Day 1 done.
+Day 1 done. Day 2 waits for the Windows check.
