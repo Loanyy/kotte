@@ -40,6 +40,8 @@
 - `166d3c9` Add player damage
 - `fbdafee` Add won and lost states
 - `8a3576e` Add round restart
+- `bc24000` Update devlog for day 2
+- `83e2264` Merge day 2 (`feature/day-02` into `final-assignment`)
 
 **Checks**
 - Linux, g++ 14 with ASan/UBSan and warnings as errors: `kotte.tests` passed, the game builds.
@@ -51,11 +53,18 @@
   - restart with an active bomb and a blast effect on screen, from Won, from Lost, on the detonation frame, on the death frame, and 100 times in a row. Every time: 23 entities, 3 enemies, no bombs or effects, empty queues, old handles do not resolve, the grid holds only live entities, the store does not grow, and the world is the same as a fresh start.
 - Stress layout still gives 4570 entities and 294 enemies, before and after restart. Both layouts give the same world as `final-assignment` before today.
 - Ran the game on a virtual screen: Space, wait, "YOU LOSE (blast)", R, back to "PLAYING | enemies left: 3".
-- Windows Release/x64 /W4: pending.
+- Windows, `feature/day-02` at `bc24000`:
+  - Release x64 /W4 rebuild: 2 succeeded, 0 failed, no warnings. `EntityStore tests passed.`, exit code 0.
+  - Blast death shows "YOU LOSE (blast)". Enemy contact shows "YOU LOSE (enemy)".
+  - Killing all three enemies shows "YOU WIN" with 0 enemies left.
+  - In Won and Lost I can't move or place a new bomb.
+  - R starts a new round with 23 entities and 3 enemies. Three restarts with an active bomb left no blast from the old bomb.
+  - `--stress`: 200x120, 4570 entities, 294 enemies.
+- The merge needed no code changes. The merged files are the same as `bc24000`, and the Linux tests pass on the merge.
 
 **Problem**
 - Checking for overlap after moving never finds enemy contact, because solid entities never overlap. I record the contact inside the movement check, where the blocked overlap is already found. The limit is that contact distance depends on the frame step (a few pixels).
 - Restarting in the middle of a phase could leave pointers to a half-built world, so the restart runs after the mutations and before drawing.
 
 **Next**
-- Windows check of this branch, then merge. Then day 3: solid bombs, range pickup, multiple bombs.
+- Day 3: solid bombs, range pickup, multiple bombs.
