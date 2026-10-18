@@ -37,14 +37,13 @@ namespace kotte
         : window_{width, height, title, target_fps}
         , camera_{window_.size()}
         , random_{seed}
-        , map_{make_room(map_width(layout), map_height(layout), random_)}
+        , map_{map_width(layout), map_height(layout)}
         , spatial_grid_{{
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
         , seed_{seed}
         , layout_{layout}{
-        populate_entities();
-        initialize_enemies();
+        start_round();
     }
 
     void Application::run(){
@@ -75,6 +74,10 @@ namespace kotte
         resolve_gameplay_facts();
         apply_structural_mutations();
         evaluate_round_outcome();
+        // Restart between phases, so no phase sees a half-built world.
+        if(frame_actions_.restart_round){
+            start_round();
+        }
         update_presentation(delta_time);
         render();
     }
@@ -94,6 +97,7 @@ namespace kotte
             request_exit();
         }
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
+        frame_actions_.restart_round = IsKeyPressed(KEY_R);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
         if(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)){
@@ -195,6 +199,26 @@ namespace kotte
             }
         }
         player_hit_facts_.clear();
+    }
+
+    void Application::start_round(){
+        entities_.clear();
+        spatial_grid_.clear();
+        enemy_handles_.clear();
+        active_bomb_handles_.clear();
+        place_bomb_requests_.clear();
+        bomb_detonated_facts_.clear();
+        destroy_entity_requests_.clear();
+        player_hit_facts_.clear();
+        blast_effects_.clear();
+        round_state_ = RoundState::playing;
+        lost_cause_ = DamageSource::blast;
+
+        // Same seed, so every round starts with the same world.
+        random_ = Random{seed_};
+        map_ = make_room(map_width(layout_), map_height(layout_), random_);
+        populate_entities();
+        initialize_enemies();
     }
 
     void Application::update_presentation(float delta_time){
@@ -586,6 +610,9 @@ namespace kotte
         }
         diagnostics += std::format(" | enemies left: {}", enemy_handles_.size());
         DrawText(diagnostics.c_str(), 10, 140, 30, status_color);
+        if(round_state_ != RoundState::playing){
+            DrawText("press R to restart", 10, 176, 20, status_color);
+        }
 
         diagnostics = std::format("seed: {}", seed_);
         DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
@@ -594,7 +621,7 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        DrawText("move: WASD/arrows | bomb: Space | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
     void Application::populate_entities(){
