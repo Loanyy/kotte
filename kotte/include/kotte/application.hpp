@@ -53,9 +53,21 @@ namespace kotte
         void request_exit() noexcept;
 
     private:
+        enum class RoundState : std::uint8_t {
+            playing,
+            won,
+            lost
+        };
+
+        enum class DamageSource : std::uint8_t {
+            blast,
+            enemy
+        };
+
         struct FrameActions final {
             Vector2 player_movement_direction{};
             bool place_bomb = false;
+            bool restart_round = false;
         };
 
         struct PlaceBombRequest final {
@@ -74,6 +86,10 @@ namespace kotte
             EntityHandle entity;
         };
 
+        struct PlayerHit final {
+            DamageSource source = DamageSource::blast;
+        };
+
         struct BlastEffect final {
             std::vector<Vector2> tile_centres;
             float remaining_seconds = 0.0f;
@@ -86,6 +102,8 @@ namespace kotte
         void update_timed_gameplay(float delta_time);
         void resolve_gameplay_facts();
         void apply_structural_mutations();
+        void evaluate_round_outcome() noexcept;
+        void start_round();
         void update_presentation(float delta_time);
         void update_player(float delta_time);
         void try_move_player(Vector2 axis_displacement);
@@ -168,11 +186,14 @@ namespace kotte
         std::vector<PlaceBombRequest> place_bomb_requests_;
         std::vector<BombDetonated> bomb_detonated_facts_;
         std::vector<DestroyEntityRequest> destroy_entity_requests_;
+        std::vector<PlayerHit> player_hit_facts_;
         std::vector<BlastEffect> blast_effects_;
         CollisionDiagnostics collision_diagnostics_;
         std::uint64_t seed_;
         WorldLayout layout_;
         EntityHandle player_handle_;
+        RoundState round_state_ = RoundState::playing;
+        DamageSource lost_cause_ = DamageSource::blast;
         bool exit_requested_ = false;
     };
 }
