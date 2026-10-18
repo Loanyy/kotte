@@ -68,10 +68,13 @@ namespace kotte
         // boundaries visible as the simulation grows.
         begin_frame();
         collect_frame_actions();
-        update_gameplay(delta_time);
-        update_timed_gameplay(delta_time);
+        if(round_state_ == RoundState::playing){
+            update_gameplay(delta_time);
+            update_timed_gameplay(delta_time);
+        }
         resolve_gameplay_facts();
         apply_structural_mutations();
+        evaluate_round_outcome();
         update_presentation(delta_time);
         render();
     }
@@ -81,6 +84,7 @@ namespace kotte
         assert(place_bomb_requests_.empty());
         assert(bomb_detonated_facts_.empty());
         assert(destroy_entity_requests_.empty());
+        assert(player_hit_facts_.empty());
         frame_actions_ = {};
         collision_diagnostics_ = {};
     }
@@ -177,6 +181,15 @@ namespace kotte
         // Entity storage and every derived index change only at this boundary.
         apply_entity_destructions();
         apply_bomb_placements();
+    }
+
+    void Application::evaluate_round_outcome() noexcept{
+        // Several hits in one frame still end the round only once.
+        if(round_state_ == RoundState::playing && !player_hit_facts_.empty()){
+            round_state_ = RoundState::lost;
+            lost_cause_ = player_hit_facts_.front().source;
+        }
+        player_hit_facts_.clear();
     }
 
     void Application::update_presentation(float delta_time){
@@ -380,7 +393,7 @@ namespace kotte
                 blocked_by_crate = true;
                 break;
             case EntityKind::player:
-                // Player-hit consequences are outside the Week 6 lifetime seam.
+                player_hit_facts_.push_back({DamageSource::blast});
                 break;
             }
         }
@@ -556,6 +569,12 @@ namespace kotte
             collision_diagnostics_.exact_tests,
             collision_diagnostics_.contacts);
         DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
+
+        if(round_state_ == RoundState::lost){
+            const char* cause = lost_cause_ == DamageSource::blast ? "blast" : "enemy";
+            diagnostics = std::format("YOU LOSE ({})", cause);
+            DrawText(diagnostics.c_str(), 10, 140, 30, RED);
+        }
 
         diagnostics = std::format("seed: {}", seed_);
         DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
@@ -739,6 +758,14 @@ namespace kotte
             if(CheckCollisionRecs(proposed_collision_bounds, entity_collision_bounds(*candidate))){
                 ++collision_diagnostics_.contacts;
                 blocked = true;
+
+                // Solid movers never overlap, so a blocked player-enemy move is the contact.
+                const bool player_enemy_contact =
+                    (proposed_entity.kind == EntityKind::player && candidate->kind == EntityKind::enemy)
+                    || (proposed_entity.kind == EntityKind::enemy && candidate->kind == EntityKind::player);
+                if(player_enemy_contact){
+                    player_hit_facts_.push_back({DamageSource::enemy});
+                }
             }
         }
 
