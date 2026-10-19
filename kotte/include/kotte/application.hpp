@@ -73,6 +73,7 @@ namespace kotte
         struct PlaceBombRequest final {
             EntityHandle owner;
             Vector2 world_position{};
+            std::uint8_t blast_range = 0;
         };
 
         struct BombDetonated final {
@@ -107,6 +108,7 @@ namespace kotte
         void update_presentation(float delta_time);
         void update_player(float delta_time);
         void try_move_player(Vector2 axis_displacement);
+        void collect_pickups();
         void update_enemies(float delta_time);
         void queue_bomb_placement();
         void apply_entity_destructions();
@@ -159,6 +161,7 @@ namespace kotte
         static constexpr float enemy_speed_ = 80.0f;
         static constexpr float bomb_fuse_seconds_ = 2.0f;
         static constexpr std::uint8_t bomb_blast_range_ = 3;
+        static constexpr std::uint8_t max_blast_range_ = 5;
         static constexpr float blast_effect_seconds_ = 0.35f;
         static constexpr Color background_color_{0x11, 0x22, 0x33, 0xff};
         static constexpr Color floor_colors_[3]{
@@ -171,6 +174,7 @@ namespace kotte
         static constexpr Color blast_color_{0xf2, 0x8f, 0x3b, 0xe8};
         static constexpr Color crate_color_{0xb0, 0x72, 0x3c, 0xff};
         static constexpr Color enemy_color_{0xd9, 0x4f, 0x70, 0xff};
+        static constexpr Color pickup_color_{0x4e, 0xc9, 0xd9, 0xff};
         static constexpr Color wall_color_{0x78, 0x5f, 0x47, 0xff};
 
         Window window_; // Constructed first, destroyed last.
@@ -194,6 +198,7 @@ namespace kotte
         EntityHandle player_handle_;
         RoundState round_state_ = RoundState::playing;
         DamageSource lost_cause_ = DamageSource::blast;
+        std::uint8_t player_blast_range_ = bomb_blast_range_;
         bool exit_requested_ = false;
     };
 }
