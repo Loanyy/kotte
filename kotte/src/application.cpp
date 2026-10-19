@@ -523,14 +523,14 @@ namespace kotte
 
         // Blast effects are short-lived presentation values, not authoritative
         // entities. Rebuilding commands here keeps their lifetime out of gameplay.
-        constexpr float blast_inset = 3.0f;
+        // Draw the full square tile, the same area the blast hits.
         for(const BlastEffect& effect : blast_effects_){
             for(const Vector2 tile_world_centre : effect.tile_centres){
                 Rectangle bounds{
-                    tile_world_centre.x - static_cast<float>(tile_size_) / 2.0f + blast_inset,
-                    tile_world_centre.y - static_cast<float>(tile_size_) / 2.0f + blast_inset,
-                    static_cast<float>(tile_size_) - blast_inset * 2.0f,
-                    static_cast<float>(tile_size_) - blast_inset * 2.0f
+                    tile_world_centre.x - static_cast<float>(tile_size_) / 2.0f,
+                    tile_world_centre.y - static_cast<float>(tile_size_) / 2.0f,
+                    static_cast<float>(tile_size_),
+                    static_cast<float>(tile_size_)
                 };
                 if(!CheckCollisionRecs(bounds, world_view)){
                     continue;
@@ -544,7 +544,7 @@ namespace kotte
                     blast_color_,
                     RenderLayer::effect,
                     tile_world_centre.y,
-                    0.3f
+                    0.0f
                 });
             }
         }
