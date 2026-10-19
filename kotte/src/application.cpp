@@ -332,6 +332,14 @@ namespace kotte
                 continue;
             }
 
+            const bool tile_has_bomb = std::ranges::any_of(active_bomb_handles_, [this, &request](EntityHandle bomb_handle){
+                const Entity* bomb = entities_.try_get(bomb_handle);
+                return bomb != nullptr && Vector2Equals(bomb->world_position, request.world_position);
+            });
+            if(tile_has_bomb){
+                continue;
+            }
+
             const Entity bomb{
                 .kind = EntityKind::bomb,
                 .world_position = request.world_position,
@@ -768,6 +776,7 @@ namespace kotte
             return true;
         }
 
+        const Rectangle current_collision_bounds = entity_collision_bounds(entity(moving_entity_handle));
         const Rectangle proposed_collision_bounds = entity_collision_bounds(proposed_entity);
 
         // Broad phase: query nearby candidates using the proposed bounds.
@@ -788,6 +797,14 @@ namespace kotte
 
             const Entity* candidate = entities_.try_get(candidate_handle);
             if(candidate == nullptr || !is_solid(candidate->kind)){
+                continue;
+            }
+
+            // The owner may walk off a bomb it still overlaps, but not back onto it.
+            const bool owner_leaving_bomb = candidate->bomb_state.has_value()
+                && candidate->bomb_state->owner == moving_entity_handle
+                && CheckCollisionRecs(current_collision_bounds, entity_collision_bounds(*candidate));
+            if(owner_leaving_bomb){
                 continue;
             }
 
@@ -813,11 +830,10 @@ namespace kotte
     bool Application::is_solid(EntityKind kind) noexcept{
         switch(kind){
         case EntityKind::player:
+        case EntityKind::bomb:
         case EntityKind::crate:
         case EntityKind::enemy:
             return true;
-        case EntityKind::bomb:
-            return false;
         }
 
         return false;
