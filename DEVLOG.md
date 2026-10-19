@@ -42,19 +42,19 @@
 ## Day 3 — 19 Oct
 
 **Added**
-- Solid bombs. The owner passes only while it still overlaps its bomb, so no extra flag. One bomb per tile.
-- A blast-range pickup on the small map, collected once on contact. Range 3 to 4, max 5. The bomb request saves the range, so old bombs keep theirs.
-- Up to 3 bombs. The count comes from the live bombs, not a counter.
-- HUD shows bombs and blast range.
+- Solid bombs. The owner passes only while still overlapping its bomb. One bomb per tile.
+- A range pickup, collected once on contact (3 to 4, max 5). Old bombs keep their range.
+- Up to 3 bombs, counted from the live bombs.
 
 **Problem**
-- In my Windows check, enemies died just outside the drawn blast. The blast was drawn 3 px smaller than the tile it hits. Now it draws the full tile.
+- Enemies seemed to die outside the blast. It was drawn 3 px smaller than the tile it hits, so now it draws the full tile. Partly entering a blast tile kills, as expected.
 
 **Checks**
-- Linux: tests and scripted play checks passed. Capacity cycle ran 5 times. Restart resets everything.
+- Linux: tests and scripted play checks passed.
+- Windows, my check: Release x64 /W4, no warnings, tests pass. 24 entities, 3 enemies. Bombs, pickup, limit, win and restart correct. `--stress` unchanged.
 
 **Commits**
-- `151ad83` Add solid bombs, `31635a3` Add blast range pickup, `01242e7` Add multiple bombs, `0c4de33` Draw blast on the full tile.
+- `151ad83` Add solid bombs, `31635a3` Add blast range pickup, `01242e7` Add multiple bombs, `0c4de33` Draw blast on the full tile, `d105c50` Merge day 3, Record day 3 checks.
 
 **Next**
 - Remote detonation.
