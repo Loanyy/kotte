@@ -348,7 +348,7 @@ namespace kotte
         for(const PlaceBombRequest& request : place_bomb_requests_){
             const Entity* owner = entities_.try_get(request.owner);
             if(owner == nullptr || owner->kind != EntityKind::player
-                || owner_has_active_bomb(request.owner)){
+                || count_owned_bombs(request.owner) >= bomb_capacity_){
                 continue;
             }
 
@@ -642,7 +642,12 @@ namespace kotte
         diagnostics += std::format(" | enemies left: {}", enemy_handles_.size());
         DrawText(diagnostics.c_str(), 10, 140, 30, status_color);
 
-        diagnostics = std::format("blast range: {}/{}", player_blast_range_, max_blast_range_);
+        diagnostics = std::format(
+            "bombs: {}/{} | blast range: {}/{}",
+            count_owned_bombs(player_handle_),
+            bomb_capacity_,
+            player_blast_range_,
+            max_blast_range_);
         DrawText(diagnostics.c_str(), 10, 176, 20, RAYWHITE);
         if(round_state_ != RoundState::playing){
             DrawText("press R to restart", 10, 200, 20, status_color);
@@ -895,13 +900,15 @@ namespace kotte
         return static_cast<CardinalDirection>(new_value);
     }
 
-    bool Application::owner_has_active_bomb(EntityHandle owner) const noexcept{
-        return std::ranges::any_of(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
+    std::size_t Application::count_owned_bombs(EntityHandle owner) const noexcept{
+        // Counted from the live bombs, so there is no separate counter to keep in sync.
+        const auto owned_bombs = std::ranges::count_if(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
             const Entity* bomb = entities_.try_get(bomb_handle);
             return bomb != nullptr
                 && bomb->bomb_state.has_value()
                 && bomb->bomb_state->owner == owner;
         });
+        return static_cast<std::size_t>(owned_bombs);
     }
 
     Vector2 Application::tile_centre(Vector2 world_position) noexcept{
