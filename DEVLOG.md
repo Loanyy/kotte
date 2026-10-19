@@ -38,3 +38,23 @@
 
 **Next**
 - Solid bombs, range pickup, multiple bombs.
+
+## Day 3 — 19 Oct
+
+**Added**
+- Solid bombs. The owner passes only while it still overlaps its bomb, so no extra flag. One bomb per tile.
+- A blast-range pickup on the small map, collected once on contact. Range 3 to 4, max 5. The bomb request saves the range, so old bombs keep theirs.
+- Up to 3 bombs. The count comes from the live bombs, not a counter.
+- HUD shows bombs and blast range.
+
+**Problem**
+- In my Windows check, enemies died just outside the drawn blast. The blast was drawn 3 px smaller than the tile it hits. Now it draws the full tile.
+
+**Checks**
+- Linux: tests and scripted play checks passed. Capacity cycle ran 5 times. Restart resets everything.
+
+**Commits**
+- `151ad83` Add solid bombs, `31635a3` Add blast range pickup, `01242e7` Add multiple bombs, `0c4de33` Draw blast on the full tile.
+
+**Next**
+- Remote detonation.

@@ -11,11 +11,11 @@
 
 namespace
 {
-    // '.' floor, 'c' crate, 'e' enemy. The player starts at tile (2, 2).
+    // '.' floor, 'c' crate, 'e' enemy, 'p' blast-range pickup. The player starts at tile (2, 2).
     constexpr std::array<std::string_view, 9> gameplay_layout{
         ".............",
         "...c.c.c.c...",
-        ".c.........c.",
+        ".c..p......c.",
         "...c..e..c...",
         ".c....c....c.",
         "...c.....c.e.",
@@ -122,6 +122,7 @@ namespace kotte
     void Application::update_gameplay(float delta_time){
         // The player and every enemy are movers; each asks its own collision question.
         update_player(delta_time);
+        collect_pickups();
         update_enemies(delta_time);
         queue_bomb_placement();
     }
@@ -213,6 +214,7 @@ namespace kotte
         blast_effects_.clear();
         round_state_ = RoundState::playing;
         lost_cause_ = DamageSource::blast;
+        player_blast_range_ = bomb_blast_range_;
 
         // Same seed, so every round starts with the same world.
         random_ = Random{seed_};
@@ -279,6 +281,23 @@ namespace kotte
         player_entity.world_position = proposed_position;
     }
 
+    void Application::collect_pickups(){
+        const Rectangle player_bounds = entity_collision_bounds(player());
+        const SpatialQuery spatial_query = spatial_grid_.query(player_bounds);
+
+        for(const EntityHandle candidate_handle : spatial_query.entity_handles){
+            const Entity* candidate = entities_.try_get(candidate_handle);
+            if(candidate == nullptr || candidate->kind != EntityKind::pickup
+                || !CheckCollisionRecs(player_bounds, entity_collision_bounds(*candidate))){
+                continue;
+            }
+
+            // The pickup is destroyed in this frame's mutation phase, so it is collected once.
+            player_blast_range_ = std::min(static_cast<std::uint8_t>(player_blast_range_ + 1), max_blast_range_);
+            destroy_entity_requests_.push_back({candidate_handle});
+        }
+    }
+
     void Application::update_enemies(float delta_time){
         // The update list contains every enemy, not only those returned by the
         // camera query. Off-screen enemies therefore keep simulating normally.
@@ -320,7 +339,8 @@ namespace kotte
         // deliberately outlives this simulation phase.
         place_bomb_requests_.push_back({
             player_handle_,
-            tile_centre(player().world_position)
+            tile_centre(player().world_position),
+            player_blast_range_
         });
     }
 
@@ -328,7 +348,15 @@ namespace kotte
         for(const PlaceBombRequest& request : place_bomb_requests_){
             const Entity* owner = entities_.try_get(request.owner);
             if(owner == nullptr || owner->kind != EntityKind::player
-                || owner_has_active_bomb(request.owner)){
+                || count_owned_bombs(request.owner) >= bomb_capacity_){
+                continue;
+            }
+
+            const bool tile_has_bomb = std::ranges::any_of(active_bomb_handles_, [this, &request](EntityHandle bomb_handle){
+                const Entity* bomb = entities_.try_get(bomb_handle);
+                return bomb != nullptr && Vector2Equals(bomb->world_position, request.world_position);
+            });
+            if(tile_has_bomb){
                 continue;
             }
 
@@ -338,7 +366,7 @@ namespace kotte
                 .bomb_state = BombState{
                     .owner = request.owner,
                     .fuse_remaining = bomb_fuse_seconds_,
-                    .blast_range = bomb_blast_range_
+                    .blast_range = request.blast_range
                 }
             };
             const EntityHandle bomb_handle = entities_.create(bomb);
@@ -424,6 +452,8 @@ namespace kotte
             case EntityKind::player:
                 player_hit_facts_.push_back({DamageSource::blast});
                 break;
+            case EntityKind::pickup:
+                break;
             }
         }
 
@@ -493,14 +523,14 @@ namespace kotte
 
         // Blast effects are short-lived presentation values, not authoritative
         // entities. Rebuilding commands here keeps their lifetime out of gameplay.
-        constexpr float blast_inset = 3.0f;
+        // Draw the full square tile, the same area the blast hits.
         for(const BlastEffect& effect : blast_effects_){
             for(const Vector2 tile_world_centre : effect.tile_centres){
                 Rectangle bounds{
-                    tile_world_centre.x - static_cast<float>(tile_size_) / 2.0f + blast_inset,
-                    tile_world_centre.y - static_cast<float>(tile_size_) / 2.0f + blast_inset,
-                    static_cast<float>(tile_size_) - blast_inset * 2.0f,
-                    static_cast<float>(tile_size_) - blast_inset * 2.0f
+                    tile_world_centre.x - static_cast<float>(tile_size_) / 2.0f,
+                    tile_world_centre.y - static_cast<float>(tile_size_) / 2.0f,
+                    static_cast<float>(tile_size_),
+                    static_cast<float>(tile_size_)
                 };
                 if(!CheckCollisionRecs(bounds, world_view)){
                     continue;
@@ -514,7 +544,7 @@ namespace kotte
                     blast_color_,
                     RenderLayer::effect,
                     tile_world_centre.y,
-                    0.3f
+                    0.0f
                 });
             }
         }
@@ -538,6 +568,7 @@ namespace kotte
             bounds.x = screen_position.x;
             bounds.y = screen_position.y;
             const RenderLayer layer = visible_candidate->kind == EntityKind::bomb
+                || visible_candidate->kind == EntityKind::pickup
                 ? RenderLayer::ground
                 : RenderLayer::world;
             renderer_.submit({
@@ -610,8 +641,16 @@ namespace kotte
         }
         diagnostics += std::format(" | enemies left: {}", enemy_handles_.size());
         DrawText(diagnostics.c_str(), 10, 140, 30, status_color);
+
+        diagnostics = std::format(
+            "bombs: {}/{} | blast range: {}/{}",
+            count_owned_bombs(player_handle_),
+            bomb_capacity_,
+            player_blast_range_,
+            max_blast_range_);
+        DrawText(diagnostics.c_str(), 10, 176, 20, RAYWHITE);
         if(round_state_ != RoundState::playing){
-            DrawText("press R to restart", 10, 176, 20, status_color);
+            DrawText("press R to restart", 10, 200, 20, status_color);
         }
 
         diagnostics = std::format("seed: {}", seed_);
@@ -651,6 +690,8 @@ namespace kotte
                     (void) spawn_entity(EntityKind::crate, tile_centre(x, y));
                 } else if(cell == 'e'){
                     (void) spawn_entity(EntityKind::enemy, tile_centre(x, y));
+                } else if(cell == 'p'){
+                    (void) spawn_entity(EntityKind::pickup, tile_centre(x, y));
                 }
             }
         }
@@ -724,6 +765,7 @@ namespace kotte
         case EntityKind::bomb: size = {22.0f, 22.0f}; break;
         case EntityKind::crate: size = {36.0f, 48.0f}; break;
         case EntityKind::enemy: size = {28.0f, 30.0f}; break;
+        case EntityKind::pickup: size = {20.0f, 20.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -740,6 +782,7 @@ namespace kotte
         case EntityKind::bomb: size = {18.0f, 12.0f}; break;
         case EntityKind::crate: size = {32.0f, 32.0f}; break;
         case EntityKind::enemy: size = {24.0f, 14.0f}; break;
+        case EntityKind::pickup: size = {16.0f, 12.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -768,6 +811,7 @@ namespace kotte
             return true;
         }
 
+        const Rectangle current_collision_bounds = entity_collision_bounds(entity(moving_entity_handle));
         const Rectangle proposed_collision_bounds = entity_collision_bounds(proposed_entity);
 
         // Broad phase: query nearby candidates using the proposed bounds.
@@ -788,6 +832,14 @@ namespace kotte
 
             const Entity* candidate = entities_.try_get(candidate_handle);
             if(candidate == nullptr || !is_solid(candidate->kind)){
+                continue;
+            }
+
+            // The owner may walk off a bomb it still overlaps, but not back onto it.
+            const bool owner_leaving_bomb = candidate->bomb_state.has_value()
+                && candidate->bomb_state->owner == moving_entity_handle
+                && CheckCollisionRecs(current_collision_bounds, entity_collision_bounds(*candidate));
+            if(owner_leaving_bomb){
                 continue;
             }
 
@@ -813,10 +865,11 @@ namespace kotte
     bool Application::is_solid(EntityKind kind) noexcept{
         switch(kind){
         case EntityKind::player:
+        case EntityKind::bomb:
         case EntityKind::crate:
         case EntityKind::enemy:
             return true;
-        case EntityKind::bomb:
+        case EntityKind::pickup:
             return false;
         }
 
@@ -847,13 +900,15 @@ namespace kotte
         return static_cast<CardinalDirection>(new_value);
     }
 
-    bool Application::owner_has_active_bomb(EntityHandle owner) const noexcept{
-        return std::ranges::any_of(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
+    std::size_t Application::count_owned_bombs(EntityHandle owner) const noexcept{
+        // Counted from the live bombs, so there is no separate counter to keep in sync.
+        const auto owned_bombs = std::ranges::count_if(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
             const Entity* bomb = entities_.try_get(bomb_handle);
             return bomb != nullptr
                 && bomb->bomb_state.has_value()
                 && bomb->bomb_state->owner == owner;
         });
+        return static_cast<std::size_t>(owned_bombs);
     }
 
     Vector2 Application::tile_centre(Vector2 world_position) noexcept{
@@ -885,6 +940,7 @@ namespace kotte
         case EntityKind::bomb: return bomb_color_;
         case EntityKind::crate: return crate_color_;
         case EntityKind::enemy: return enemy_color_;
+        case EntityKind::pickup: return pickup_color_;
         }
         return MAGENTA;
     }
