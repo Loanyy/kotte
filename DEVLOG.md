@@ -38,3 +38,23 @@
 
 **Next**
 - Solid bombs, range pickup, multiple bombs.
+
+## Day 3 — 19 Oct
+
+**Added**
+- Solid bombs. The owner can walk off its bomb but not back on. One bomb per tile.
+- A blast-range pickup on the small map. Collected once, on contact. Range goes 3 to 4, max 5. The range is saved in the bomb request, so old bombs keep theirs.
+- Up to 3 bombs at once. The count comes from the live bombs, not a counter.
+- HUD line: `bombs: 0/3 | blast range: 3/5`.
+
+**Problem**
+- A solid bomb traps its owner. The owner passes only while it still overlaps the bomb, so no extra flag is needed.
+
+**Checks**
+- Linux: tests and scripted play checks passed. Capacity cycle ran 5 times. Restart resets range, pickup and bombs.
+
+**Commits**
+- `151ad83` Add solid bombs, `31635a3` Add blast range pickup, `01242e7` Add multiple bombs.
+
+**Next**
+- Remote detonation.

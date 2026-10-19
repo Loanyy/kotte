@@ -12,7 +12,7 @@ Working notes for the final assignment. The submission report is `README.md`.
 | --- | --- | --- | --- |
 | 1 | 17 Oct | Baseline check, small gameplay map, `EntityStore::clear` | Done |
 | 2 | 18 Oct | Player damage, Playing/Won/Lost, safe restart | Done |
-| 3 | 19 Oct | Solid bombs, range pickup, #6 multiple bombs | |
+| 3 | 19 Oct | Solid bombs, range pickup, #6 multiple bombs | Windows check pending |
 | 4 | 20 Oct | #13 remote detonation, bomb trace for the VG study | |
 | 5 | 21 Oct | #8 shield (evening) | |
 | 6 | 22 Oct | Shield, bomb and restart interactions (evening) | |
@@ -29,4 +29,5 @@ Only checks that were actually run count as done.
 
 - Day 1: Windows Release x64 build with no warnings, tests pass. Small map: 23 entities, 3 enemies. `--stress`: 4570 entities, 294 enemies.
 - Day 2: Windows Release x64 /W4 build with no warnings, tests pass. Blast and enemy deaths, win, freeze after the round and restart work. `--stress` unchanged.
-- Next: day 3.
+- Day 3: Windows check pending.
+- Next: day 4.
