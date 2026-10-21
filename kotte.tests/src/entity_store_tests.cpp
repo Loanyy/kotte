@@ -127,6 +127,21 @@ namespace
         }
     }
 
+    void count_if_sees_only_live_entities(){
+        kotte::EntityStore store;
+        const kotte::EntityHandle first_bomb = store.create({kotte::EntityKind::bomb});
+        (void) store.create({kotte::EntityKind::bomb});
+        (void) store.create({kotte::EntityKind::crate});
+        const auto is_bomb = [](const kotte::Entity& entity){ return entity.kind == kotte::EntityKind::bomb; };
+        require(store.count_if(is_bomb) == 2, "count_if must count matching live entities.");
+
+        require(store.destroy(first_bomb), "A live handle must be destroyable.");
+        require(store.count_if(is_bomb) == 1, "count_if must skip destroyed entities.");
+
+        store.clear();
+        require(store.count_if(is_bomb) == 0, "count_if must see nothing after clear.");
+    }
+
     void a_new_store_can_repeat_old_handles(){
         // Why restart clears the store instead of replacing it.
         kotte::EntityStore old_store;
@@ -146,6 +161,7 @@ int main(){
         handles_survive_storage_reallocation();
         relationships_do_not_keep_stale_owners_alive();
         clear_invalidates_every_old_handle();
+        count_if_sees_only_live_entities();
         a_new_store_can_repeat_old_handles();
         std::println("EntityStore tests passed.");
         return 0;
