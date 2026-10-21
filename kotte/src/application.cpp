@@ -97,6 +97,7 @@ namespace kotte
             request_exit();
         }
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
+        frame_actions_.detonate_bombs = IsKeyPressed(KEY_E);
         frame_actions_.restart_round = IsKeyPressed(KEY_R);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
@@ -138,7 +139,9 @@ namespace kotte
 
             BombState& state = *bomb->bomb_state;
             state.fuse_remaining -= delta_time;
-            if(state.fuse_remaining > 0.0f){
+            // One check for both causes, so a bomb detonates once even if both happen this frame.
+            const bool remote_detonation = frame_actions_.detonate_bombs && state.owner == player_handle_;
+            if(state.fuse_remaining > 0.0f && !remote_detonation){
                 continue;
             }
 
@@ -660,7 +663,7 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        DrawText("move: WASD/arrows | bomb: Space | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        DrawText("move: WASD/arrows | bomb: Space | detonate: E | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
     void Application::populate_entities(){
