@@ -30,6 +30,18 @@ namespace kotte
         [[nodiscard]] std::size_t live_count() const noexcept;
         [[nodiscard]] std::size_t slot_count() const noexcept;
 
+        // Visits every slot, so it does not depend on any list kept outside the store.
+        template<typename Predicate>
+        [[nodiscard]] std::size_t count_if(Predicate predicate) const{
+            std::size_t count = 0;
+            for(const Slot& slot : slots_){
+                if(slot.entity.has_value() && predicate(*slot.entity)){
+                    ++count;
+                }
+            }
+            return count;
+        }
+
     private:
         static constexpr std::uint32_t first_generation_ = 1;
 

@@ -44,7 +44,8 @@ namespace kotte
             std::string_view title,
             std::uint64_t seed,
             WorldLayout layout,
-            int target_fps = 0);
+            int target_fps = 0,
+            bool trace_bombs = false);
 
         Application(const Application&) = delete;
         Application& operator=(const Application&) = delete;
@@ -67,6 +68,7 @@ namespace kotte
         struct FrameActions final {
             Vector2 player_movement_direction{};
             bool place_bomb = false;
+            bool detonate_bombs = false;
             bool restart_round = false;
         };
 
@@ -144,6 +146,12 @@ namespace kotte
         [[nodiscard]] static Vector2 cardinal_vector(CardinalDirection direction) noexcept;
         [[nodiscard]] CardinalDirection different_enemy_direction(CardinalDirection current_direction);
         [[nodiscard]] std::size_t count_owned_bombs(EntityHandle owner) const noexcept;
+        void trace_bomb_event(
+            std::string_view event,
+            EntityHandle bomb,
+            Vector2 world_position,
+            std::size_t counted_bombs,
+            std::string_view note = {}) const;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
         [[nodiscard]] static int map_width(WorldLayout layout) noexcept;
@@ -201,5 +209,7 @@ namespace kotte
         DamageSource lost_cause_ = DamageSource::blast;
         std::uint8_t player_blast_range_ = bomb_blast_range_;
         bool exit_requested_ = false;
+        bool trace_bombs_ = false;
+        std::uint64_t frame_number_ = 0;
     };
 }

@@ -58,3 +58,22 @@
 
 **Next**
 - Remote detonation.
+
+## Day 4 — 21 Oct
+
+**Added**
+- E detonates the player's live bombs. The fuse still runs. Fuse and E share one check, so a bomb detonates once. The normal blast and destroy requests remove it, so capacity returns that frame. E does nothing in Won/Lost.
+- `--trace-bombs` prints one line per bomb event. `counted` is the number the capacity check uses. `verified` comes from scanning the whole store with `EntityStore::count_if`.
+
+**Problem**
+- The first trace run printed nothing, because stdout was buffered when the game was killed. Each line is now flushed.
+
+**Checks**
+- Linux tests and scripted play checks passed: no bombs, 3 bombs, E on the fuse frame, Won/Lost, restart. Traces of fuse, remote, a blast removing another bomb and restart: both columns match. A deliberately broken counter showed MISMATCH.
+- Windows: pending.
+
+**Commits**
+- `aa5a5ff` Add remote detonation, `93ccb62` Add count_if to EntityStore, `610aef4` Add bomb trace.
+
+**Next**
+- Windows check, then the shield.

@@ -4,7 +4,9 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstdio>
 #include <format>
+#include <print>
 #include <raymath.h>
 #include <string>
 #include <utility>
@@ -33,7 +35,8 @@ namespace kotte
         std::string_view title,
         std::uint64_t seed,
         WorldLayout layout,
-        int target_fps)
+        int target_fps,
+        bool trace_bombs)
         : window_{width, height, title, target_fps}
         , camera_{window_.size()}
         , random_{seed}
@@ -42,7 +45,12 @@ namespace kotte
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
         , seed_{seed}
-        , layout_{layout}{
+        , layout_{layout}
+        , trace_bombs_{trace_bombs}{
+        if(trace_bombs_){
+            std::println("TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store");
+            std::println("TRACE {:>6} {:<8} {:>8} {:>6} {:>7} {:>8} {}", "frame", "event", "bomb", "tile", "counted", "verified", "note");
+        }
         start_round();
     }
 
@@ -90,6 +98,7 @@ namespace kotte
         assert(player_hit_facts_.empty());
         frame_actions_ = {};
         collision_diagnostics_ = {};
+        ++frame_number_;
     }
 
     void Application::collect_frame_actions() noexcept{
@@ -97,6 +106,7 @@ namespace kotte
             request_exit();
         }
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
+        frame_actions_.detonate_bombs = IsKeyPressed(KEY_E);
         frame_actions_.restart_round = IsKeyPressed(KEY_R);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
@@ -138,12 +148,17 @@ namespace kotte
 
             BombState& state = *bomb->bomb_state;
             state.fuse_remaining -= delta_time;
-            if(state.fuse_remaining > 0.0f){
+            // One check for both causes, so a bomb detonates once even if both happen this frame.
+            const bool remote_detonation = frame_actions_.detonate_bombs && state.owner == player_handle_;
+            if(state.fuse_remaining > 0.0f && !remote_detonation){
                 continue;
             }
 
+            const bool fuse_ended = state.fuse_remaining <= 0.0f;
             state.fuse_remaining = 0.0f;
             state.detonation_requested = true;
+            trace_bomb_event(remote_detonation ? "remote" : "fuse", bomb_handle, bomb->world_position,
+                count_owned_bombs(player_handle_), remote_detonation && fuse_ended ? "fuse also ended" : "");
 
             // The fact owns every value needed by later phases; it does not
             // borrow the bomb that will eventually request its own destruction.
@@ -203,6 +218,11 @@ namespace kotte
     }
 
     void Application::start_round(){
+        if(trace_bombs_ && frame_number_ > 0){
+            const std::string note = std::format("{} place requests, {} destroy requests, {} detonation facts",
+                place_bomb_requests_.size(), destroy_entity_requests_.size(), bomb_detonated_facts_.size());
+            trace_bomb_event("restart", {}, {}, count_owned_bombs(player_handle_), note);
+        }
         entities_.clear();
         spatial_grid_.clear();
         enemy_handles_.clear();
@@ -221,6 +241,7 @@ namespace kotte
         map_ = make_room(map_width(layout_), map_height(layout_), random_);
         populate_entities();
         initialize_enemies();
+        trace_bomb_event("round", {}, {}, count_owned_bombs(player_handle_));
     }
 
     void Application::update_presentation(float delta_time){
@@ -347,8 +368,12 @@ namespace kotte
     void Application::apply_bomb_placements(){
         for(const PlaceBombRequest& request : place_bomb_requests_){
             const Entity* owner = entities_.try_get(request.owner);
-            if(owner == nullptr || owner->kind != EntityKind::player
-                || count_owned_bombs(request.owner) >= bomb_capacity_){
+            if(owner == nullptr || owner->kind != EntityKind::player){
+                continue;
+            }
+            const std::size_t owned_bombs = count_owned_bombs(request.owner);
+            if(owned_bombs >= bomb_capacity_){
+                trace_bomb_event("check", {}, request.world_position, owned_bombs, "rejected, capacity full");
                 continue;
             }
 
@@ -357,8 +382,10 @@ namespace kotte
                 return bomb != nullptr && Vector2Equals(bomb->world_position, request.world_position);
             });
             if(tile_has_bomb){
+                trace_bomb_event("check", {}, request.world_position, owned_bombs, "rejected, tile has a bomb");
                 continue;
             }
+            trace_bomb_event("check", {}, request.world_position, owned_bombs, "accepted");
 
             const Entity bomb{
                 .kind = EntityKind::bomb,
@@ -375,6 +402,7 @@ namespace kotte
             // views used by spatial queries and timed gameplay.
             spatial_grid_.insert(bomb_handle, entity_world_bounds(bomb));
             active_bomb_handles_.push_back(bomb_handle);
+            trace_bomb_event("place", bomb_handle, bomb.world_position, count_owned_bombs(request.owner));
         }
 
         place_bomb_requests_.clear();
@@ -398,9 +426,16 @@ namespace kotte
             // Spatial membership is derived from the live entity, so remove it
             // while the handle can still resolve to the bounds used at insertion.
             spatial_grid_.remove(request.entity, entity_world_bounds(*doomed));
+            const bool was_bomb = doomed->kind == EntityKind::bomb;
+            const bool detonated = was_bomb && doomed->bomb_state->detonation_requested;
+            const Vector2 position = doomed->world_position;
             const bool destroyed = entities_.destroy(request.entity);
             assert(destroyed);
             (void) destroyed;
+            if(was_bomb){
+                trace_bomb_event("removed", request.entity, position, count_owned_bombs(player_handle_),
+                    detonated ? "after its own blast" : "hit by another blast");
+            }
         }
 
         // These update lists are non-owning views. A single cleanup pass keeps
@@ -660,7 +695,7 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        DrawText("move: WASD/arrows | bomb: Space | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        DrawText("move: WASD/arrows | bomb: Space | detonate: E | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
     void Application::populate_entities(){
@@ -909,6 +944,38 @@ namespace kotte
                 && bomb->bomb_state->owner == owner;
         });
         return static_cast<std::size_t>(owned_bombs);
+    }
+
+    void Application::trace_bomb_event(
+        std::string_view event,
+        EntityHandle bomb,
+        Vector2 world_position,
+        std::size_t counted_bombs,
+        std::string_view note) const{
+        if(!trace_bombs_){
+            return;
+        }
+
+        // Scans the whole store, not active_bomb_handles_, so a bug in that list shows as a mismatch.
+        const std::size_t verified_bombs = entities_.count_if([this](const Entity& candidate){
+            return candidate.kind == EntityKind::bomb
+                && candidate.bomb_state.has_value()
+                && candidate.bomb_state->owner == player_handle_;
+        });
+        const std::string bomb_text = bomb.slot == EntityHandle::invalid_slot
+            ? std::string{"-"}
+            : std::format("{}:{}", bomb.slot, bomb.generation);
+        const float tile_extent = static_cast<float>(tile_size_);
+        const std::string tile_text = Vector2Equals(world_position, Vector2Zero())
+            ? std::string{"-"}
+            : std::format("{},{}",
+                static_cast<int>(std::floor(world_position.x / tile_extent)),
+                static_cast<int>(std::floor(world_position.y / tile_extent)));
+        std::println("TRACE {:>6} {:<8} {:>8} {:>6} {:>7} {:>8} {}{}",
+            frame_number_, event, bomb_text, tile_text, counted_bombs, verified_bombs,
+            counted_bombs == verified_bombs ? "" : "MISMATCH ", note);
+        // Flushed per line, so the trace is kept even if the game crashes.
+        std::fflush(stdout);
     }
 
     Vector2 Application::tile_centre(Vector2 world_position) noexcept{
