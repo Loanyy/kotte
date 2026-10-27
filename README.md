@@ -11,6 +11,7 @@
   - Remote (E): detonates every live bomb you own in that frame. Bombs you do not detonate still explode when the fuse ends. If E and the fuse end in the same frame, the bomb explodes once.
   - Shield (F): once per round, 3 s. Blasts and enemy contact do not kill you, but walls, crates, bombs and enemies still block you. Pressing F again does not extend it. The player turns white and the HUD shows the time left, then `shield: used`.
 - **Configurations / demo setup:** Default is the small gameplay map (15 × 11 tiles, 24 entities, 3 enemies). `kotte.release.exe --stress` opens the Week 6 stress world (200 × 120 tiles, 4570 entities, 294 enemies). `--trace-bombs` prints a `TRACE` line to the console for every bomb event (see the investigation). The flags can be combined. The seed is fixed, so every round starts with the same world. The game uses no asset files.
+- **Running the Release ZIP:** `kotte.release.exe` needs 64-bit Windows. raylib is linked statically, so no raylib DLL is shipped. The build uses the shared Microsoft Visual C++ runtime (`/MD`); Visual Studio installs it, and on other PCs it comes with the x64 Visual C++ Redistributable.
 
 ## Features and validation
 
