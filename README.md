@@ -43,39 +43,31 @@ AI assistance: I used Claude Code, an AI coding agent, for the whole project. I 
 
 ### Decision
 
-How should the game know whether the player can place another bomb? Now `count_owned_bombs` (`application.cpp`) counts the handles in `active_bomb_handles_` that still resolve to a bomb owned by the player. `apply_bomb_placements` uses it for the 3-bomb limit, and the HUD shows it. The alternative is a stored counter: +1 when a bomb is placed, −1 when one of the player's bombs is removed, read without a loop.
+How should the game know whether the player can place another bomb? Now `count_owned_bombs` (`application.cpp`) counts the handles in `active_bomb_handles_` that still resolve to a bomb owned by the player, and `apply_bomb_placements` uses it for the 3-bomb limit. The alternative is a stored counter: +1 when `apply_bomb_placements` creates a bomb, −1 when `apply_entity_destructions` removes one of the player's bombs, and a reset in `start_round`.
 
 ### Method
 
-`--trace-bombs` prints one line for every round start, placement check, placement, detonation (fuse or E), removal and restart. `counted` is the value the capacity rule uses. `verified` is an independent scan of the whole `EntityStore` (`EntityStore::count_if`), and a difference prints `MISMATCH`. I ran six scripted scenarios on Linux on commit `aacb59f` (seed `0x4b4f545445`, gameplay layout, fixed 1/60 s step): T1 fill to 3, reject a 4th, let a fuse free a slot and place again; T2 three bombs and E; T3 one blast removes my other bomb; T4 R with three live bombs, then fill to 3 and reject a 4th; T5 E in the frame the fuse ends; T6 bombs while the shield is on. For the alternative I did not change the game. I ran the same scenarios on throwaway copies where `count_owned_bombs` returns a counter. **B** is the correctly kept counter: −1 in `apply_entity_destructions`, the only place that calls `EntityStore::destroy`, and a reset in `start_round`. **A** and **C** each miss one of those duties: A subtracts when the bomb's own detonation is resolved, and C has no reset. Files, setup and commands are in [docs/vg](docs/vg/README.md). I also ran `--trace-bombs` by hand on Windows on 23 Oct (fuse, E and restart).
+`--trace-bombs` prints a line for every placement check, placement, detonation, removal and restart. `counted` is the value the capacity rule uses; `verified` comes from scanning the whole `EntityStore`, and a difference prints `MISMATCH`. On Linux I ran six scripted scenarios on commit `aacb59f` (seed `0x4b4f545445`, gameplay layout, fixed 1/60 s step), including filling to capacity and rejecting a 4th bomb, E, a blast removing my other bomb (T3), and R with three live bombs (T4). I ran the same scenarios on throwaway copies that return a counter: **B** is the counter described above; **A** subtracts when the bomb's own detonation is resolved instead; **C** is B without the reset. Scenarios, patches, raw traces and the command to rerun them are in [docs/vg](docs/vg/README.md). On Windows I ran `--trace-bombs` by hand on 23 Oct (fuse, E and restart).
 
 ### Evidence
 
 | Version | MISMATCH lines | First wrong result |
 | --- | --- | --- |
 | Current (computed) | 0 of 88 | — |
-| B: counter at the destruction point + reset | 0 of 88 | — |
-| A: counter at detonation | 10 of 88 | T3: counted 1, verified 0 after the second bomb was removed by the first blast |
-| C: like B, no reset | 5 of 79 | T4: after R counted 3, verified 0, every placement rejected |
+| B: counter at the destruction function + reset | 0 of 88 | — |
+| A: counter at detonation | 10 of 88 | T3: counted 1, verified 0 after the first blast removed my second bomb |
+| C: B without the reset | 5 of 79 | T4: after R counted 3, verified 0, every placement rejected |
 
-```
-           frame event   bomb  tile counted verified note
-current T3   122 removed 25:1   6,9       0        0 hit by another blast
-A       T3   122 removed 25:1   6,9       1        0 MISMATCH hit by another blast
-A       T3   133 place   25:2   6,9       2        1 MISMATCH
-C       T4    35 check      -   2,9       3        0 MISMATCH rejected, capacity full
-```
-
-My Windows trace on 23 Oct also had no MISMATCH. The other 5 lines in A come from T2, T4 and T6: the counter drops in the resolve phase, and the bombs are removed later in the same frame.
+My Windows trace also had no MISMATCH.
 
 ### Interpretation
 
-A player bomb can leave the world in three ways: its own detonation (fuse or E), being hit by another blast (it is removed without exploding, because this game has no chain reactions), and restart, where `start_round` clears the whole store without going through `apply_entity_destructions`. The computed count does not depend on which way it happened. After the mutation phase the list cleanup drops dead handles and `try_get` rejects stale ones, so the count always matches what is alive.
+A bomb leaves the world in three ways: its own detonation, being hit by another blast (removed without exploding, as there are no chain reactions), and restart. The first two both end in `apply_entity_destructions`, the only caller of `EntityStore::destroy`. Restart does not: `start_round` clears the whole store directly. The computed count does not care which path was used, because the list cleanup and `try_get` leave only live, valid bombs.
 
-B shows that a counter can be just as correct here, because every removal during a round passes one central function and restart is handled on its own. The cost is a duty to maintain it: every new way to create or remove a bomb (kicking, chain reactions, an owner dying, a second player) must update it, and a missed path fails silently. A is that mistake. It subtracts in the place that feels natural, the explosion, and misses the T3 bomb. Each such bomb leaks one slot, so after three leaks the player could never place a bomb again (my conclusion from the rule, not a run). A also drops the counter before the bomb is removed, so for part of the frame the number and the world disagree. C forgets that restart skips the central function.
+B is correct because it is updated at the same central point. A new feature that removes bombs through destroy requests, such as kicking or chain reactions, would not need its own counter update. The real risk is code that skips that point: restart, which is why C fails, or any later direct `destroy` or `clear`. A shows the other mistake: it updates on an event (the explosion) rather than on the removal, so the T3 bomb is never subtracted and a slot leaks. The counter also has to check the owner when it subtracts, which the computed count already does.
 
-Work: the computed count walks `active_bomb_handles_`, not the whole store. That list holds at most the 3 player bombs here. It is called once per placement request and once per frame for the HUD. I did not time either version.
+The computed count walks `active_bomb_handles_` (at most 3 entries here), not the store, once per placement request and once per frame for the HUD. I did not time either version.
 
 ### Conclusion
 
-For one player and three bombs, counting the live, valid owned bombs is the better choice. It stayed correct on every tested removal path, including restart, without extra bookkeeping, and the work is a walk over at most three handles. A stored counter is worth it when the count is read very often for many owners, for example many AI bombers checking every frame, or when the bomb list gets long. Then I would update it only in the central destruction function plus restart, as in B, and keep the `verified` trace as a debug check.
+For one player and three bombs, counting live, valid owned bombs is the better choice. It was correct on every tested path, including restart, with no state to keep in sync. A stored counter, kept as in B, becomes preferable when the count is read very often for many owners or the bomb list is long. It stays correct only while all removals go through the central function and restart resets it, so I would keep the `verified` trace as a debug check.
