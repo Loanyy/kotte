@@ -9,6 +9,17 @@ Evidence for the bomb-capacity investigation in the main [README](../../README.m
 - Linux, g++-14. `trace_scenarios.cpp` drives the real `Application::run_frame` with fake key presses. `raylib_stub.cpp` replaces the raylib window, drawing and input calls, so no window is needed. The scenarios place the player on a tile before pressing a key and hold the enemies at tiles (13, 1..3), away from the test row 9. T5 sets the fuse to half a frame so that E and the fuse end fall in the same frame.
 - `counted` is the value the capacity rule uses. `verified` comes from scanning the whole `EntityStore`. A difference prints `MISMATCH`.
 
+## Scenarios
+
+| Scenario | What it does |
+| --- | --- |
+| T1 | Three bombs, a fourth is rejected, a fuse frees a slot, place again |
+| T2 | Three bombs, E, place again |
+| T3 | One blast removes another own bomb |
+| T4 | Restart with three active bombs, then fill to capacity again |
+| T5 | E in the frame the fuse ends |
+| T6 | Shield on, standing on own bombs: fuse and remote |
+
 ## Files
 
 | File | What it is |
