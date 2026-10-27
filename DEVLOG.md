@@ -111,7 +111,7 @@
 - No code changed. Windows HUD check, final build and ZIP: pending.
 
 **Commits**
-- Add VG trace files, Update README for submission, Update devlog and roadmap for final check, Merge final check.
+- Add VG trace files, Update README for submission, Update devlog and roadmap for final check, Merge final check, Add run requirements to README, Shorten VG investigation.
 
 **Next**
 - Release /W4 build and ZIP from the final commit (Okan).
