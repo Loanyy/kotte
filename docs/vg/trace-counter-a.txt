@@ -1,0 +1,113 @@
+
+## T1 capacity: three bombs, a fourth is rejected, a fuse frees a slot, place again
+TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store
+TRACE  frame event        bomb   tile counted verified note
+TRACE      0 round           -      -       0        0 
+TRACE      1 check           -    1,9       0        0 accepted
+TRACE      1 place        24:1    1,9       1        1 
+TRACE     12 check           -    5,9       1        1 accepted
+TRACE     12 place        25:1    5,9       2        2 
+TRACE     23 check           -    9,9       2        2 accepted
+TRACE     23 place        26:1    9,9       3        3 
+TRACE     34 check           -   13,9       3        3 rejected, capacity full
+TRACE    122 fuse         24:1    1,9       3        3 
+TRACE    122 removed      24:1    1,9       2        2 after its own blast
+TRACE    122 check           -   13,9       2        2 accepted
+TRACE    122 place        24:2   13,9       3        3 
+TRACE    133 fuse         25:1    5,9       3        3 
+TRACE    133 removed      25:1    5,9       2        2 after its own blast
+TRACE    144 fuse         26:1    9,9       2        2 
+TRACE    144 removed      26:1    9,9       1        1 after its own blast
+TRACE    243 fuse         24:2   13,9       1        1 
+TRACE    243 removed      24:2   13,9       0        0 after its own blast
+
+## T2 remote: three bombs, E, place again
+TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store
+TRACE  frame event        bomb   tile counted verified note
+TRACE      0 round           -      -       0        0 
+TRACE      1 check           -    2,9       0        0 accepted
+TRACE      1 place        24:1    2,9       1        1 
+TRACE      2 check           -    5,9       1        1 accepted
+TRACE      2 place        25:1    5,9       2        2 
+TRACE      3 check           -    8,9       2        2 accepted
+TRACE      3 place        26:1    8,9       3        3 
+TRACE      4 check           -   11,9       3        3 rejected, capacity full
+TRACE      5 remote       24:1    2,9       3        3 
+TRACE      5 remote       25:1    5,9       3        3 
+TRACE      5 remote       26:1    8,9       3        3 
+TRACE      5 removed      24:1    2,9       0        2 MISMATCH after its own blast
+TRACE      5 removed      25:1    5,9       0        1 MISMATCH after its own blast
+TRACE      5 removed      26:1    8,9       0        0 after its own blast
+TRACE      6 check           -    5,9       0        0 accepted
+TRACE      6 place        26:2    5,9       1        1 
+TRACE      7 remote       26:2    5,9       1        1 
+TRACE      7 removed      26:2    5,9       0        0 after its own blast
+
+## T3 one blast removes another own bomb
+TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store
+TRACE  frame event        bomb   tile counted verified note
+TRACE      0 round           -      -       0        0 
+TRACE      1 check           -    4,9       0        0 accepted
+TRACE      1 place        24:1    4,9       1        1 
+TRACE     62 check           -    6,9       1        1 accepted
+TRACE     62 place        25:1    6,9       2        2 
+TRACE    122 fuse         24:1    4,9       2        2 
+TRACE    122 removed      24:1    4,9       1        1 after its own blast
+TRACE    122 removed      25:1    6,9       1        0 MISMATCH hit by another blast
+TRACE    133 check           -    6,9       1        0 MISMATCH accepted
+TRACE    133 place        25:2    6,9       2        1 MISMATCH 
+TRACE    134 remote       25:2    6,9       2        1 MISMATCH 
+TRACE    134 removed      25:2    6,9       1        0 MISMATCH after its own blast
+
+## T4 restart with three active bombs, then fill to capacity again
+TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store
+TRACE  frame event        bomb   tile counted verified note
+TRACE      0 round           -      -       0        0 
+TRACE      1 check           -    2,9       0        0 accepted
+TRACE      1 place        24:1    2,9       1        1 
+TRACE      2 check           -    5,9       1        1 accepted
+TRACE      2 place        25:1    5,9       2        2 
+TRACE      3 check           -    8,9       2        2 accepted
+TRACE      3 place        26:1    8,9       3        3 
+TRACE     34 restart         -      -       3        3 0 place requests, 0 destroy requests, 0 detonation facts
+TRACE     34 round           -      -       0        0 
+TRACE     35 check           -    2,9       0        0 accepted
+TRACE     35 place         2:2    2,9       1        1 
+TRACE     36 check           -    5,9       1        1 accepted
+TRACE     36 place         1:2    5,9       2        2 
+TRACE     37 check           -    8,9       2        2 accepted
+TRACE     37 place         0:2    8,9       3        3 
+TRACE     38 check           -   11,9       3        3 rejected, capacity full
+TRACE     39 remote        2:2    2,9       3        3 
+TRACE     39 remote        1:2    5,9       3        3 
+TRACE     39 remote        0:2    8,9       3        3 
+TRACE     39 removed       0:2    8,9       0        2 MISMATCH after its own blast
+TRACE     39 removed       1:2    5,9       0        1 MISMATCH after its own blast
+TRACE     39 removed       2:2    2,9       0        0 after its own blast
+
+## T5 E in the frame the fuse ends
+TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store
+TRACE  frame event        bomb   tile counted verified note
+TRACE      0 round           -      -       0        0 
+TRACE      1 check           -    5,9       0        0 accepted
+TRACE      1 place        24:1    5,9       1        1 
+TRACE     32 remote       24:1    5,9       1        1 fuse also ended
+TRACE     32 removed      24:1    5,9       0        0 after its own blast
+
+## T6 shield on, standing on own bombs: fuse and remote
+TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store
+TRACE  frame event        bomb   tile counted verified note
+TRACE      0 round           -      -       0        0 
+TRACE      2 check           -    3,9       0        0 accepted
+TRACE      2 place        24:1    3,9       1        1 
+TRACE      3 check           -    6,9       1        1 accepted
+TRACE      3 place        25:1    6,9       2        2 
+TRACE      4 remote       24:1    3,9       2        2 
+TRACE      4 remote       25:1    6,9       2        2 
+TRACE      4 removed      24:1    3,9       0        1 MISMATCH after its own blast
+TRACE      4 removed      25:1    6,9       0        0 after its own blast
+TRACE      5 check           -    3,9       0        0 accepted
+TRACE      5 place        25:2    3,9       1        1 
+TRACE    126 fuse         25:2    3,9       1        1 
+TRACE    126 removed      25:2    3,9       0        0 after its own blast
+state=0 (0 = playing)
