@@ -1,73 +1,80 @@
-# Bomberman World — Bomberman World
+# Bomberman World — Okan Ozcan
 
 **Student:** Okan Ozcan
 
 ## How to play
 
-- **Controls:** WASD or arrow keys move. Space places a bomb on your tile. E detonates all your bombs. F starts the shield. R restarts the round. Q or Escape quits.
-- **Objective and rules:** Kill all three enemies with bomb blasts to win. A blast or touching an enemy kills you. If the same frame kills you and the last enemy, you lose. After a win or a loss the world stops until you press R. You can have 3 bombs at once; a bomb is solid, but you can walk off a bomb you are still standing on. The cyan pickup adds 1 blast range (3 to 4, max 5); bombs already placed keep their old range. E detonates every bomb you own at once; the fuse (2 s) still works if you do not press E. F gives a 3 s shield once per round: blasts and enemy contact do not kill you, but walls, crates, bombs and enemies still block you. Pressing F again does not extend it. The player turns light white and the HUD shows the time left, then `shield: used`.
-- **Configurations / demo setup:** Default is the small gameplay map (15 × 11 tiles, 3 enemies). `kotte.exe --stress` opens the Week 6 stress world (200 × 120 tiles, 4570 entities, 294 enemies). `kotte.exe --trace-bombs` prints one `TRACE` line to the console for every bomb event (see the investigation below). Both flags can be combined. The seed is fixed, so every round starts with the same world.
+- **Controls:** WASD or arrow keys move. Space places a bomb. E detonates all your bombs. F starts the shield. R restarts the round at any time. Q or Escape quits.
+- **Objective and rules:** Kill all three enemies with bomb blasts to win. A blast or touching an enemy kills you. If you die in the same frame as the last enemy, you lose. After a win or a loss, movement, enemies, fuses, bombs, E and F stop until you press R.
+  - Bombs: up to 3 at once, 2 s fuse, range 3. A bomb is solid. You can walk off a bomb you are still standing on, but you cannot walk back onto it. One bomb per tile.
+  - Pickup: the cyan pickup adds 1 range to bombs placed after it (3 to 4, the code caps it at 5). It is not solid, and blasts do not destroy it.
+  - Remote (E): detonates every live bomb you own in that frame. Bombs you do not detonate still explode when the fuse ends. If E and the fuse end in the same frame, the bomb explodes once.
+  - Shield (F): once per round, 3 s. Blasts and enemy contact do not kill you, but walls, crates, bombs and enemies still block you. Pressing F again does not extend it. The player turns white and the HUD shows the time left, then `shield: used`.
+- **Configurations / demo setup:** Default is the small gameplay map (15 × 11 tiles, 24 entities, 3 enemies). `kotte.release.exe --stress` opens the Week 6 stress world (200 × 120 tiles, 4570 entities, 294 enemies). `--trace-bombs` prints a `TRACE` line to the console for every bomb event (see the investigation). The flags can be combined. The seed is fixed, so every round starts with the same world. The game uses no asset files.
 
 ## Features and validation
 
-Most checks below were scripted: a small test program drives the real `run_frame` with fake key presses at a fixed 1/60 s step on Linux (a headless stand-in replaces the raylib window calls). Checks marked *Windows* I did by hand in the Release build.
+**Linux** checks are small test programs that run the real `run_frame` with fake key presses at a fixed 1/60 s step, with a headless stand-in for the raylib window calls. Some scenarios place the player or an enemy on a tile to set up the situation. Last run on 27 Oct on commit `aacb59f` (the same game code as this commit): 161 checks and `kotte.tests`, 0 failures. **Windows** checks are my own hand-played checks of the Release x64 build, with dates.
 
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
-| 1. Player damage and death | Stood on my own bomb until the fuse ended: `YOU LOSE (blast)`. Walked into a parked enemy: `YOU LOSE (enemy)` within 10 frames. *Windows (18 Oct):* both deaths seen. Both match the rules. |
-| 2. Round states and objective | One blast killed the last three enemies with me in range: Lost, not Won, as intended. Without me in range: Won. Then I held move, Space, E and F for 60 frames: the player did not move and no bomb or shield started. In Lost, enemies and a live fuse stayed frozen for 180 frames. All as expected. |
-| 3. Safe restart | Pressed R with the shield on, one bomb live and a blast effect on screen: new round with 24 entities, 3 enemies, no bombs or effects, shield ready, and old bomb and player handles no longer resolve. Pressed E and R in the same frame: no late blast. *Windows (23 Oct):* restart with an active bomb correct. Matches. |
-| 4. Solid bombs with owner escape | Placed a bomb and walked left: off the bomb after 5 frames, then walking back stopped at the bomb's edge. An enemy walking into a bomb turned. A second bomb on the same tile was rejected. After the blast I walked across the old tile. All as expected. |
-| 5. Blast-range pickup | Took the pickup while bomb A was live: A kept range 3 and the next bomb had range 4. The pickup is collected once, a blast does not destroy it, and R brings it back with range 3. Matches. |
-| #6 Multiple bombs (3) | Placed 3 bombs, the 4th was rejected, then the first fuse freed one slot and the next press was accepted (trace T1: `counted` and `verified` equal on every line). A blast that destroyed my second bomb returned both slots in the same frame. Five fill-and-empty cycles in a row all behaved the same. |
-| #13 Remote-detonated bombs | E with 3 bombs: 3 blasts in the same frame, capacity back to 0/3 and a new bomb could be placed the next frame. E in the same frame as the fuse ending: one blast and one trace line (`fuse also ended`). E in Won or Lost: no blast. *Windows (23 Oct):* E with 0, 1 and 3 bombs correct. |
-| #8 Shield | With the shield on, my own bomb (fuse and E) and an enemy push did not kill me; the enemy still blocked me. After it ended, the next blast gave `YOU LOSE (blast)` and the next contact `YOU LOSE (enemy)`. A blast in the frame the timer reaches 0 kills; one frame earlier it does not. Second F: no extension. At 1/60 s the shield lasted 181 frames, not 180, because float steps leave about 2e-6 s; the extra 17 ms is kept as is. |
+| 1. Player damage and death | Linux: standing on my own bomb gave `YOU LOSE (blast)` when the fuse ended. Walking into an enemy gave `YOU LOSE (enemy)` after 7 frames. An enemy passing close by was a broad-phase candidate but never touched me, and the round stayed Playing. A blast and an enemy contact in the same frame caused one transition. Windows (18 Oct): both deaths seen. All as expected. |
+| 2. Round states and objective | Linux: one blast that killed the last enemies with me in range gave Lost, not Won. Without me in range it gave Won. In Won I held move, Space, E and F for 60 frames: nothing moved and no bomb or shield started. In Lost the enemies and a live fuse stayed frozen for 180 frames. Windows (18–19 Oct): I won and lost rounds and the world stopped. As expected. |
+| 3. Safe restart | Linux: R with a live bomb and a blast effect on screen gave a new round with 24 entities, 3 enemies, no bombs, effects or queued requests. The grid held exactly the live entities, and the old player, enemy and bomb handles no longer resolved. The same with the shield on also gave a ready shield. E and R in the same frame left no late blast. 100 restarts did not grow the store. Windows (23 Oct): restart with an active bomb was clean. As expected. |
+| 4. Solid bombs with owner escape | Linux: I placed a bomb and walked left. I was off it after 5 frames, and walking back stopped at its edge. An enemy walking into a bomb turned and never overlapped it. Space again on the same tile still left one bomb. After the blast I walked across the old tile. Windows (19 Oct): solid bombs correct by hand. As expected. |
+| 5. Blast-range pickup | Linux: standing 2 px from the pickup did not collect it. Touching it changed the range from 3 to 4 and removed it, and walking over its old tile again kept 4. Bomb A, placed before the pickup, kept range 3. Bomb B, placed after, hit 12 tiles instead of 10. R brought back the pickup and range 3. Windows (19 Oct): correct by hand. As expected. |
+| #6 Multiple bombs (capacity 3) | Linux: five cycles of placing 3 bombs, a rejected 4th, one fuse ending and a new bomb. Each cycle ended at 3/3. A blast that destroyed my second bomb freed both slots in that frame. R with 3 live bombs gave 0/3, then 3 again and a rejected 4th. Windows (19 and 23 Oct): limit and replacement correct. As expected. |
+| #13 Remote-detonated bombs | Linux: E with no bombs did nothing. E with 3 bombs gave 3 blasts in that frame and 0/3, and a new bomb could be placed and detonated right after. E in the frame the fuse ended gave exactly one blast. In Won and Lost, E and the fuse did nothing until R. Windows (23 Oct): E with 0, 1 and 3 bombs correct. As expected. |
+| #8 Shield | Linux: with the shield on, my own bomb (fuse and E) and 60 frames of walking into an enemy did not kill me. The enemy and crates still blocked me. After the shield ended, the next blast gave `YOU LOSE (blast)` and the next contact `YOU LOSE (enemy)`. A second F did not extend it, and R reset it. Windows (27 Oct): the same rules by hand. As expected, except that it lasts 181 frames instead of 180 (see known issues). |
 
 **Known issues:**
-- Crate collision boxes (from the base code) reach 12 px into the tile above. A blast that passes the tile directly above a crate destroys that crate and stops there; for example a bomb at tile (2, 1) destroys the crate at (4, 2) and its ray ends at (4, 1). Walking along that row also touches the crate a little early. I left the base sizes unchanged.
-- Enemy contact is counted when a move between the player and an enemy is blocked. Standing still next to an enemy that walks away is not a hit.
+- Crate collision boxes (base code) reach 12 px into the tile above and leave the lower part of the crate's own tile free. A blast passing the tile above a crate therefore destroys that crate and stops there. A player standing in that lower part places the bomb on the crate's tile. I kept the base sizes.
+- Enemy contact is a blocked move between the player and an enemy. Standing still next to an enemy that walks away is not a hit.
+- At a fixed 1/60 s step the shield lasts 181 frames, not 180, because the float countdown leaves about 2e-6 s. The extra 17 ms is kept.
 
 ## Sources and assistance
 
-This project builds on the shared Kotte foundations (`2026-week-06-reference`, commit `19e2866`, by Ulf Benjaminsson, MIT licence in `LICENSE.txt`). It uses raylib 6.0 (zlib licence, `vendor/raylib/LICENSE`) and cpp_prngs (`vendor/cpp_prngs/LICENSE.md`). The game draws simple shapes; the Bombman art in `assets/` came with Kotte (CC0) and is not used.
+This project builds on the shared Kotte foundations (`2026-week-06-reference`, commit `19e2866`, by Ulf Benjaminsson, MIT licence in `LICENSE.txt`). It uses raylib 6.0 (zlib licence, `vendor/raylib/LICENSE`) and cpp_prngs (`vendor/cpp_prngs/LICENSE.md`). The Bombman art in `assets/` came with Kotte and is not used. No other external code or collaborators.
 
-AI assistance: I used Claude Code, an AI coding agent, through the whole project. I set the scope, the extensions and the working rules, and it planned the days with me, wrote most of the code changes, wrote the scripted checks and the trace scenarios, and drafted this README, `DEVLOG.md` and `ROADMAP.md`. I read the diffs, asked for changes, and did every Windows build and hand-played check myself. The scripted Linux results above come from those AI-written test programs. I am still studying parts of the code for the presentation.
+AI assistance: I used Claude Code, an AI coding agent, for the whole project. I chose the scope, the three extensions and the rules (simple code in Kotte's style, small commits, no extra systems). It proposed the daily plan, wrote most of the code changes, the scripted Linux checks, the bomb trace scenarios and the counter variants, and drafted this README, `DEVLOG.md` and `ROADMAP.md`. I read each change before it was merged and asked for changes, for example shorter comments and simpler code. I did every Windows build and hand-played check myself, and the Windows results above are mine. The Linux results come from the AI-written test programs. Before the presentation I am going through every changed function and the investigation so I can explain them without help.
 
 ## Architectural investigation — VG only
 
 ### Decision
 
-Should the three-bomb limit be computed from the live bombs, or kept in a separate counter? Now `count_owned_bombs` (`application.cpp`) walks `active_bomb_handles_` and counts the handles that still resolve to a bomb owned by the player. `apply_bomb_placements` uses it for the capacity check and the HUD shows it. A plausible alternative is a `player_bomb_count_` member: +1 when a bomb is placed, −1 when it goes away, read in O(1).
+How should the game know whether the player can place another bomb? Now `count_owned_bombs` (`application.cpp`) counts the handles in `active_bomb_handles_` that still resolve to a bomb owned by the player. `apply_bomb_placements` uses it for the 3-bomb limit, and the HUD shows it. The alternative is a stored counter: +1 when a bomb is placed, −1 when one of the player's bombs is removed, read without a loop.
 
 ### Method
 
-`--trace-bombs` prints a line for every round start, placement check, placement, detonation (fuse or remote), removal and restart. `counted` is the value the capacity check uses; `verified` is an independent scan of the whole `EntityStore` (`EntityStore::count_if`), and a difference prints `MISMATCH`. I ran six scenarios on commit `0c360ca` (seed `0x4b4f545445`, gameplay layout, fixed 1/60 s step, scripted keys on Linux): T1 fill to 3, reject a 4th, let a fuse free a slot and place again; T2 three bombs and E; T3 one blast removes my other bomb; T4 R with three live bombs, then fill to 3 again and reject a 4th; T5 E in the frame the fuse ends; T6 the same with the shield on. To test the alternative without committing it, I made three throwaway builds where `count_owned_bombs` returns a counter: **A** −1 when the bomb's own detonation is resolved; **B** −1 in `apply_entity_destructions` for every removed own bomb, reset in `start_round`; **C** like B but without the reset. Finally I timed `count_owned_bombs` and a full store scan (`-O2`, Linux). The raw traces, patches and scripts are kept with my project notes.
+`--trace-bombs` prints one line for every round start, placement check, placement, detonation (fuse or E), removal and restart. `counted` is the value the capacity rule uses. `verified` is an independent scan of the whole `EntityStore` (`EntityStore::count_if`), and a difference prints `MISMATCH`. I ran six scripted scenarios on Linux on commit `aacb59f` (seed `0x4b4f545445`, gameplay layout, fixed 1/60 s step): T1 fill to 3, reject a 4th, let a fuse free a slot and place again; T2 three bombs and E; T3 one blast removes my other bomb; T4 R with three live bombs, then fill to 3 and reject a 4th; T5 E in the frame the fuse ends; T6 bombs while the shield is on. For the alternative I did not change the game. I ran the same scenarios on throwaway copies where `count_owned_bombs` returns a counter. **B** is the correctly kept counter: −1 in `apply_entity_destructions`, the only place that calls `EntityStore::destroy`, and a reset in `start_round`. **A** and **C** each miss one of those duties: A subtracts when the bomb's own detonation is resolved, and C has no reset. Files, setup and commands are in [docs/vg](docs/vg/README.md). I also ran `--trace-bombs` by hand on Windows on 23 Oct (fuse, E and restart).
 
 ### Evidence
 
-| Build | MISMATCH lines (same six scenarios) | What went wrong |
+| Version | MISMATCH lines | First wrong result |
 | --- | --- | --- |
-| Current (computed) | 0 | — |
-| A: −1 on own detonation | 10 | T3: the bomb destroyed by another blast was never subtracted |
-| B: −1 on any removal, reset on R | 0 | — |
-| C: like B, no reset | 5 | T4: after R, every placement was rejected |
+| Current (computed) | 0 of 88 | — |
+| B: counter at the destruction point + reset | 0 of 88 | — |
+| A: counter at detonation | 10 of 88 | T3: counted 1, verified 0 after the second bomb was removed by the first blast |
+| C: like B, no reset | 5 of 79 | T4: after R counted 3, verified 0, every placement rejected |
 
 ```
-         frame event        bomb   tile counted verified note
-current  T3 122 removed      25:1    6,9       0        0 hit by another blast
-A        T3 122 removed      25:1    6,9       1        0 MISMATCH hit by another blast
-A        T3 133 place        25:2    6,9       2        1 MISMATCH
-C        T4  35 check           -    2,9       3        0 MISMATCH rejected, capacity full
+           frame event   bomb  tile counted verified note
+current T3   122 removed 25:1   6,9       0        0 hit by another blast
+A       T3   122 removed 25:1   6,9       1        0 MISMATCH hit by another blast
+A       T3   133 place   25:2   6,9       2        1 MISMATCH
+C       T4    35 check      -   2,9       3        0 MISMATCH rejected, capacity full
 ```
 
-Earlier runs agree: on 21 Oct the real game binary with `--trace-bombs` (Linux) and on 23 Oct my own Windows run had no MISMATCH, and a deliberately broken version (list size without cleanup) did show MISMATCH. Cost: `count_owned_bombs` took 7–9 ns per call with 3 bombs, both in the 27-entity and the 4573-entity world; the full store scan took 14–20 ns and 2.4–2.6 µs. I did not time a counter.
+My Windows trace on 23 Oct also had no MISMATCH. The other 5 lines in A come from T2, T4 and T6: the counter drops in the resolve phase, and the bombs are removed later in the same frame.
 
 ### Interpretation
 
-A bomb can leave the world in three ways: its own detonation (fuse or E), being hit by another blast (it is removed without exploding, because there are no chain reactions), and restart, where `start_round` clears the whole store. The computed count does not care which way it happened. After the mutation phase the list cleanup drops dead handles and `try_get` rejects stale ones, so the count is always taken from what is really alive. A counter is only right if every one of those paths updates it. Variant A is the natural mistake, "subtract when the bomb explodes": it misses the edge case in T3 and leaks one slot each time. After three leaks the player could never place a bomb again, and nothing would show it except the trace. Variant C forgets restart. Variant B proves a counter can work, but only because all removals go through one function and restart was remembered. Every future removal path (kicking, chain reactions, an owner dying) would be another place to keep it in sync. A also shows a smaller problem: its counter dropped in the resolve phase, before the bombs were actually removed, so for part of the frame the number and the world disagreed.
+A player bomb can leave the world in three ways: its own detonation (fuse or E), being hit by another blast (it is removed without exploding, because this game has no chain reactions), and restart, where `start_round` clears the whole store without going through `apply_entity_destructions`. The computed count does not depend on which way it happened. After the mutation phase the list cleanup drops dead handles and `try_get` rejects stale ones, so the count always matches what is alive.
 
-Cost: the computed count walks the short active-bomb list, not the store, which is why its time stayed the same in the stress world while the full scan grew. With at most 3 bombs and a few calls per frame that is well under a microsecond in a 16.7 ms frame, so a counter could only save very little here.
+B shows that a counter can be just as correct here, because every removal during a round passes one central function and restart is handled on its own. The cost is a duty to maintain it: every new way to create or remove a bomb (kicking, chain reactions, an owner dying, a second player) must update it, and a missed path fails silently. A is that mistake. It subtracts in the place that feels natural, the explosion, and misses the T3 bomb. Each such bomb leaks one slot, so after three leaks the player could never place a bomb again (my conclusion from the rule, not a run). A also drops the counter before the bomb is removed, so for part of the frame the number and the world disagree. C forgets that restart skips the central function.
+
+Work: the computed count walks `active_bomb_handles_`, not the whole store. That list holds at most the 3 player bombs here. It is called once per placement request and once per frame for the HUD. I did not time either version.
 
 ### Conclusion
 
-For this game, with one player, three bombs and a short list of active bombs, computing the count from the live bombs is the better choice. It was correct in every tested removal path, including restart, without extra bookkeeping, and its measured cost is a few nanoseconds per call. A counter becomes worth it when the count is read very often for many owners, for example hundreds of AI bombers checking capacity every frame. Then it should be updated in the single destruction function plus restart (variant B), and the `verified` trace should stay as a debug check.
+For one player and three bombs, counting the live, valid owned bombs is the better choice. It stayed correct on every tested removal path, including restart, without extra bookkeeping, and the work is a walk over at most three handles. A stored counter is worth it when the count is read very often for many owners, for example many AI bombers checking every frame, or when the bomb list gets long. Then I would update it only in the central destruction function plus restart, as in B, and keep the `verified` trace as a debug check.
