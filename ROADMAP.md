@@ -14,14 +14,10 @@ Working notes for the final assignment. The submission report is `README.md`.
 | 2 | 18 Oct | Player damage, Playing/Won/Lost, safe restart | Done |
 | 3 | 19 Oct | Solid bombs, range pickup, #6 multiple bombs | Done |
 | 4 | 21 Oct | #13 remote detonation, bomb trace for the VG study | Done |
-| 5 | 22 Oct | #8 shield (evening) | |
-| 6 | 23 Oct | Shield, bomb and restart interactions (evening) | |
-| 7 | 24 Oct | Full check of all eight features, feature freeze | |
-| 8–9 | 25 Oct | Learn the code, fix remaining defects | |
-| 10 | 26 Oct | VG trace and evidence table | |
-| 11 | 27 Oct | README | |
-| 12 | 28 Oct | Presentation rehearsal | |
-| 13 | 29 Oct | Release /W4 rebuild, ZIP check, final commit link | |
+| 5 | 27 Oct | #8 shield, check all eight features, VG trace and evidence, README | Linux done, Windows pending |
+| 6 | 28 Oct | Merge, Release /W4 build from the final commit, ZIP check, final commit link | |
+| 7 | 29 Oct | Buffer | |
+| — | 30 Oct 16:00 | Submission (Okan) | |
 
 ## Status
 
@@ -31,4 +27,4 @@ Only checks that were actually run count as done.
 - Day 2: Windows Release x64 /W4 build with no warnings, tests pass. Blast and enemy deaths, win, freeze after the round and restart work. `--stress` unchanged.
 - Day 3: Windows Release x64 /W4 build with no warnings, tests pass. Small map: 24 entities, 3 enemies. Solid bombs, pickup, 3-bomb limit, win and restart work. `--stress` unchanged.
 - Day 4 (checked 23 Oct): Windows Release x64 /W4 build with no warnings, tests pass. E works with no bombs, one bomb and three bombs, and capacity returns. Restart with an active bomb and E in Lost work. Trace: counted and verified match on every line. `--stress`: 4570 entities, 294 enemies.
-- Next: day 5.
+- Day 5: Windows check pending.
