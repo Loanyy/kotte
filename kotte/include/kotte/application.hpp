@@ -69,6 +69,7 @@ namespace kotte
             Vector2 player_movement_direction{};
             bool place_bomb = false;
             bool detonate_bombs = false;
+            bool activate_shield = false;
             bool restart_round = false;
         };
 
@@ -108,6 +109,7 @@ namespace kotte
         void evaluate_round_outcome() noexcept;
         void start_round();
         void update_presentation(float delta_time);
+        void activate_shield() noexcept;
         void update_player(float delta_time);
         void try_move_player(Vector2 axis_displacement);
         void collect_pickups();
@@ -172,6 +174,7 @@ namespace kotte
         static constexpr std::uint8_t bomb_blast_range_ = 3;
         static constexpr std::uint8_t max_blast_range_ = 5;
         static constexpr float blast_effect_seconds_ = 0.35f;
+        static constexpr float shield_seconds_ = 3.0f;
         static constexpr Color background_color_{0x11, 0x22, 0x33, 0xff};
         static constexpr Color floor_colors_[3]{
             Color{0x38, 0x49, 0x52, 0xff},
@@ -179,6 +182,7 @@ namespace kotte
             Color{0x42, 0x55, 0x60, 0xff}
         };
         static constexpr Color player_color_{0xf2, 0xc1, 0x4e, 0xff};
+        static constexpr Color shielded_player_color_{0xe8, 0xf4, 0xff, 0xff};
         static constexpr Color bomb_color_{0x20, 0x24, 0x2a, 0xff};
         static constexpr Color blast_color_{0xf2, 0x8f, 0x3b, 0xe8};
         static constexpr Color crate_color_{0xb0, 0x72, 0x3c, 0xff};
@@ -208,6 +212,8 @@ namespace kotte
         RoundState round_state_ = RoundState::playing;
         DamageSource lost_cause_ = DamageSource::blast;
         std::uint8_t player_blast_range_ = bomb_blast_range_;
+        float shield_remaining_ = 0.0f;
+        bool shield_used_ = false;
         bool exit_requested_ = false;
         bool trace_bombs_ = false;
         std::uint64_t frame_number_ = 0;
