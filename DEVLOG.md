@@ -97,3 +97,21 @@
 
 **Next**
 - Release ZIP from the final commit.
+
+## Final check — 27 Oct
+
+**Added**
+- `docs/vg/`: the trace scenarios, the three counter patches and their traces, so the VG evidence can be rerun.
+
+**Problem**
+- README and package steps named `kotte.exe`, but the build makes `kotte.release.exe`. Fixed. The VG text also used timings that could not be rerun, so they are removed.
+
+**Checks**
+- Linux on `aacb59f`: tests passed, 161 scripted checks 0 FAIL. Trace 0 MISMATCH; counters A 10, B 0, C 5, the same as the day 5 records.
+- No code changed. Windows HUD check, final build and ZIP: pending.
+
+**Commits**
+- Add VG trace files, Update README for submission, Update devlog and roadmap for final check, Merge final check.
+
+**Next**
+- Release /W4 build and ZIP from the final commit (Okan).

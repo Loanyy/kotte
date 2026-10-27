@@ -1,0 +1,55 @@
+diff --git a/kotte/include/kotte/application.hpp b/kotte/include/kotte/application.hpp
+index 47df629..0ed20f5 100644
+--- a/kotte/include/kotte/application.hpp
++++ b/kotte/include/kotte/application.hpp
+@@ -214,6 +214,7 @@ namespace kotte
+         std::uint8_t player_blast_range_ = bomb_blast_range_;
+         float shield_remaining_ = 0.0f;
+         bool shield_used_ = false;
++        std::size_t player_bomb_count_ = 0;
+         bool exit_requested_ = false;
+         bool trace_bombs_ = false;
+         std::uint64_t frame_number_ = 0;
+diff --git a/kotte/src/application.cpp b/kotte/src/application.cpp
+index 96a1a46..271c283 100644
+--- a/kotte/src/application.cpp
++++ b/kotte/src/application.cpp
+@@ -178,6 +178,9 @@ namespace kotte
+ 
+     void Application::resolve_gameplay_facts(){
+         for(const BombDetonated& fact : bomb_detonated_facts_){
++            if(fact.owner == player_handle_){
++                --player_bomb_count_;
++            }
+             BlastEffect effect;
+             effect.remaining_seconds = blast_effect_seconds_;
+             effect.tile_centres.reserve(static_cast<std::size_t>(fact.blast_range) * 4 + 1);
+@@ -241,6 +244,7 @@ namespace kotte
+         round_state_ = RoundState::playing;
+         lost_cause_ = DamageSource::blast;
+         player_blast_range_ = bomb_blast_range_;
++        player_bomb_count_ = 0;
+         shield_remaining_ = 0.0f;
+         shield_used_ = false;
+ 
+@@ -419,6 +423,9 @@ namespace kotte
+             // views used by spatial queries and timed gameplay.
+             spatial_grid_.insert(bomb_handle, entity_world_bounds(bomb));
+             active_bomb_handles_.push_back(bomb_handle);
++            if(request.owner == player_handle_){
++                ++player_bomb_count_;
++            }
+             trace_bomb_event("place", bomb_handle, bomb.world_position, count_owned_bombs(request.owner));
+         }
+ 
+@@ -960,7 +967,9 @@ namespace kotte
+     }
+ 
+     std::size_t Application::count_owned_bombs(EntityHandle owner) const noexcept{
+-        // Counted from the live bombs, so there is no separate counter to keep in sync.
++        if(owner == player_handle_){
++            return player_bomb_count_;
++        }
+         const auto owned_bombs = std::ranges::count_if(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
+             const Entity* bomb = entities_.try_get(bomb_handle);
+             return bomb != nullptr
