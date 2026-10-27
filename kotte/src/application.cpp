@@ -696,11 +696,10 @@ namespace kotte
         DrawText(diagnostics.c_str(), 10, 140, 30, status_color);
 
         diagnostics = std::format(
-            "bombs: {}/{} | blast range: {}/{}",
+            "bombs: {}/{} | blast range: {}",
             count_owned_bombs(player_handle_),
             bomb_capacity_,
-            player_blast_range_,
-            max_blast_range_);
+            player_blast_range_);
         DrawText(diagnostics.c_str(), 10, 176, 20, RAYWHITE);
 
         if(shield_remaining_ > 0.0f){
