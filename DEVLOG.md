@@ -77,3 +77,23 @@
 
 **Next**
 - The shield.
+
+## Day 5 — 27 Oct
+
+**Added**
+- #8 shield: F gives 3 s once per round. Hits still happen, but `evaluate_round_outcome` ignores them while it runs. Collisions are unchanged. HUD shows the time, then `used`. R resets it.
+- HUD shows `blast range: 3` instead of `3/5`.
+- README with the VG investigation.
+
+**Problem**
+- The timer counts down before blasts resolve, so a blast in its last frame hurts. It lasts 181 frames, not 180 (float steps); kept.
+
+**Checks**
+- Linux: tests and scripted checks passed. Trace: 0 MISMATCH; counter variants without the blast-removed bomb or the restart reset gave MISMATCH.
+- Windows, my check on `ec3f970`: Release x64 /W4, no warnings, tests pass. Shield rules, restart and Won/Lost correct. `--stress`: 4570 entities, 294 enemies. HUD fix: pending.
+
+**Commits**
+- `0c360ca` Add player shield, `7081dfb` Complete README, `ec3f970` Update devlog, `f5f5391` Show blast range without the max, Merge day 5.
+
+**Next**
+- Release ZIP from the final commit.
