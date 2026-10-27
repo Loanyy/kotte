@@ -107,6 +107,7 @@ namespace kotte
         }
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
         frame_actions_.detonate_bombs = IsKeyPressed(KEY_E);
+        frame_actions_.activate_shield = IsKeyPressed(KEY_F);
         frame_actions_.restart_round = IsKeyPressed(KEY_R);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
@@ -130,6 +131,7 @@ namespace kotte
     }
 
     void Application::update_gameplay(float delta_time){
+        activate_shield();
         // The player and every enemy are movers; each asks its own collision question.
         update_player(delta_time);
         collect_pickups();
@@ -138,6 +140,9 @@ namespace kotte
     }
 
     void Application::update_timed_gameplay(float delta_time){
+        // Counted down before blasts resolve, so a blast in the frame it ends already hurts.
+        shield_remaining_ = std::max(shield_remaining_ - delta_time, 0.0f);
+
         // This list is independent of camera queries, so off-screen fuses advance.
         for(const EntityHandle bomb_handle : active_bomb_handles_){
             Entity* bomb = entities_.try_get(bomb_handle);
@@ -207,7 +212,8 @@ namespace kotte
         // Several hits in one frame still end the round only once. Hits are
         // checked first, so a blast that kills the last enemy and the player loses.
         if(round_state_ == RoundState::playing){
-            if(!player_hit_facts_.empty()){
+            // Hits still happen while shielded; they just do not end the round.
+            if(!player_hit_facts_.empty() && shield_remaining_ <= 0.0f){
                 round_state_ = RoundState::lost;
                 lost_cause_ = player_hit_facts_.front().source;
             } else if(enemy_handles_.empty()){
@@ -235,6 +241,8 @@ namespace kotte
         round_state_ = RoundState::playing;
         lost_cause_ = DamageSource::blast;
         player_blast_range_ = bomb_blast_range_;
+        shield_remaining_ = 0.0f;
+        shield_used_ = false;
 
         // Same seed, so every round starts with the same world.
         random_ = Random{seed_};
@@ -253,6 +261,15 @@ namespace kotte
         });
 
         update_camera(delta_time);
+    }
+
+    void Application::activate_shield() noexcept{
+        // Once per round, so pressing F again cannot extend it.
+        if(!frame_actions_.activate_shield || shield_used_){
+            return;
+        }
+        shield_used_ = true;
+        shield_remaining_ = shield_seconds_;
     }
 
     void Application::update_player(float delta_time){
@@ -606,9 +623,10 @@ namespace kotte
                 || visible_candidate->kind == EntityKind::pickup
                 ? RenderLayer::ground
                 : RenderLayer::world;
+            const bool shielded_player = entity_handle == player_handle_ && shield_remaining_ > 0.0f;
             renderer_.submit({
                 bounds,
-                entity_color(visible_candidate->kind),
+                shielded_player ? shielded_player_color_ : entity_color(visible_candidate->kind),
                 layer,
                 visible_candidate->world_position.y,
                 entity_roundness(visible_candidate->kind)
@@ -684,8 +702,15 @@ namespace kotte
             player_blast_range_,
             max_blast_range_);
         DrawText(diagnostics.c_str(), 10, 176, 20, RAYWHITE);
+
+        if(shield_remaining_ > 0.0f){
+            diagnostics = std::format("shield: ON {:.1f} s", shield_remaining_);
+        } else{
+            diagnostics = shield_used_ ? "shield: used" : "shield: ready (F)";
+        }
+        DrawText(diagnostics.c_str(), 10, 200, 20, shield_remaining_ > 0.0f ? shielded_player_color_ : RAYWHITE);
         if(round_state_ != RoundState::playing){
-            DrawText("press R to restart", 10, 200, 20, status_color);
+            DrawText("press R to restart", 10, 224, 20, status_color);
         }
 
         diagnostics = std::format("seed: {}", seed_);
@@ -695,7 +720,7 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        DrawText("move: WASD/arrows | bomb: Space | detonate: E | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        DrawText("move: WASD/arrows | bomb: Space | detonate: E | shield: F | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
     void Application::populate_entities(){
