@@ -81,18 +81,19 @@
 ## Day 5 — 27 Oct
 
 **Added**
-- #8 shield: F gives 3 s once per round. Hits still happen, but `evaluate_round_outcome` ignores them while the timer runs. Collisions are unchanged. The player turns light white and the HUD shows the time, then `used`. R resets it.
+- #8 shield: F gives 3 s once per round. Hits still happen, but `evaluate_round_outcome` ignores them while it runs. Collisions are unchanged. HUD shows the time, then `used`. R resets it.
+- HUD shows `blast range: 3` instead of `3/5`.
 - README with the VG investigation.
 
 **Problem**
-- Should a blast in the frame the shield ends hurt? The timer counts down before blasts resolve, so it does. Float steps make it last 181 frames, not 180 (17 ms more); kept as is.
+- The timer counts down before blasts resolve, so a blast in its last frame hurts. It lasts 181 frames, not 180 (float steps); kept.
 
 **Checks**
-- Linux: tests and scripted checks passed (shield, plus the day 2–4 scripts again). Trace: 0 MISMATCH. Counter variants: missing the blast-removed bomb or the restart reset gave MISMATCH.
-- Windows, my check: pending.
+- Linux: tests and scripted checks passed. Trace: 0 MISMATCH; counter variants without the blast-removed bomb or the restart reset gave MISMATCH.
+- Windows, my check on `ec3f970`: Release x64 /W4, no warnings, tests pass. Shield rules, restart and Won/Lost correct. `--stress`: 4570 entities, 294 enemies. HUD fix: pending.
 
 **Commits**
-- `0c360ca` Add player shield, Complete README and VG investigation.
+- `0c360ca` Add player shield, `7081dfb` Complete README, `ec3f970` Update devlog, `f5f5391` Show blast range without the max, Merge day 5.
 
 **Next**
-- Windows check, merge, Release ZIP.
+- Release ZIP from the final commit.
