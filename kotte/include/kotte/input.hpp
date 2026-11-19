@@ -9,6 +9,8 @@
 
 namespace kotte
 {
+    
+    // these are actions player can do in the game
     enum class Action {
         quit,
         place_bomb,
@@ -24,6 +26,8 @@ namespace kotte
     class Input final {
     public:
         Input() = default;
+
+        //binds are connection for keys to game actions
 
         void bind(Action action, std::vector<int> keys);
 
