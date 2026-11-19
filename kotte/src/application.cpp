@@ -35,6 +35,7 @@ namespace kotte
         std::string_view title,
         std::uint64_t seed,
         WorldLayout layout,
+        const nlohmann::json& input_config,
         int target_fps,
         bool trace_bombs)
         : window_{width, height, title, target_fps}
@@ -51,6 +52,10 @@ namespace kotte
             std::println("TRACE counted = bombs counted for the capacity check, verified = owned bombs found by scanning the store");
             std::println("TRACE {:>6} {:<8} {:>8} {:>6} {:>7} {:>8} {}", "frame", "event", "bomb", "tile", "counted", "verified", "note");
         }
+
+
+        input_.load_bindings(input_config);
+
         start_round();
     }
 
@@ -101,34 +106,28 @@ namespace kotte
         ++frame_number_;
     }
 
-    void Application::collect_frame_actions() noexcept{
-        if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_Q)){
+    //removed all system, which was hard input, right now it checks what players wants to do, not which key is pressed.
+    void Application::collect_frame_actions() noexcept {
+        if (input_.pressed(Action::quit)) {
             request_exit();
         }
-        frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
-        frame_actions_.detonate_bombs = IsKeyPressed(KEY_E);
-        frame_actions_.activate_shield = IsKeyPressed(KEY_F);
-        frame_actions_.restart_round = IsKeyPressed(KEY_R);
 
-        Vector2& movement_direction = frame_actions_.player_movement_direction;
-        if(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)){
-            movement_direction.x -= 1.0f;
-        }
-        if(IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)){
-            movement_direction.x += 1.0f;
-        }
-        if(IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)){
-            movement_direction.y -= 1.0f;
-        }
-        if(IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)){
-            movement_direction.y += 1.0f;
-        }
+        frame_actions_.place_bomb =
+            input_.pressed(Action::place_bomb);
 
-        // Normalize intent before simulation so bindings cannot change movement speed.
-        if(movement_direction.x != 0.0f || movement_direction.y != 0.0f){
-            movement_direction = Vector2Normalize(movement_direction);
-        }
+        frame_actions_.detonate_bombs =
+            input_.pressed(Action::detonate_bombs);
+
+        frame_actions_.activate_shield =
+            input_.pressed(Action::activate_shield);
+
+        frame_actions_.restart_round =
+            input_.pressed(Action::restart_round);
+
+        frame_actions_.player_movement_direction =
+            input_.get(Direction::move);
     }
+
 
     void Application::update_gameplay(float delta_time){
         activate_shield();

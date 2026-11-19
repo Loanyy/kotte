@@ -66,7 +66,7 @@
       <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>.\include;..\vendor\raylib\include;..\vendor\cpp_prngs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\include;..\vendor\raylib\include;$(SolutionDir)vendor\nlohmann_json\include;..\vendor\cpp_prngs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <TreatWarningAsError>true</TreatWarningAsError>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -89,7 +89,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>.\include;..\vendor\raylib\include;..\vendor\cpp_prngs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\include;..\vendor\raylib\include;$(SolutionDir)vendor\nlohmann_json\include;..\vendor\cpp_prngs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
@@ -106,6 +106,7 @@
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\entity_store.cpp" />
+    <ClCompile Include="src\input.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\renderer.cpp" />
     <ClCompile Include="src\spatial_grid.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="include\kotte\spatial_grid.hpp" />
     <ClInclude Include="include\kotte\tile_map.hpp" />
     <ClInclude Include="include\kotte\window.hpp" />
+    <ClInclude Include="include\kotte\input.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

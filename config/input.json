@@ -1,0 +1,18 @@
+
+{
+    "actions": {
+        "quit": ["ESCAPE", "Q"],
+        "place_bomb": ["SPACE"],
+        "detonate_bombs": ["E"],
+        "activate_shield": ["F"],
+        "restart_round": ["R"]
+    },
+    "directions": {
+        "move": {
+            "up": ["UP", "W"],
+            "down": ["DOWN", "S"],
+            "left": ["LEFT", "A"],
+            "right": ["RIGHT", "D"]
+        }
+    }
+}
